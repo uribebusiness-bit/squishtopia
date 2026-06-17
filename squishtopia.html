@@ -730,6 +730,7 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
     <div class="parent-settings-panel" id="parent-panel">
       <div class="modal-title" style="margin-bottom:16px">👪 Parent Settings</div>
       <div class="toggle-row"><div><div class="toggle-label">Sound Effects</div><div class="toggle-sub">Game sounds on/off</div></div><label class="toggle-switch"><input type="checkbox" id="toggle-sound" checked><span class="toggle-slider"></span></label></div>
+      <div class="toggle-row"><div><div class="toggle-label">Background Music</div><div class="toggle-sub">Gentle music on/off</div></div><label class="toggle-switch"><input type="checkbox" id="toggle-music" checked><span class="toggle-slider"></span></label></div>
       <div class="toggle-row"><div><div class="toggle-label">Trade Features</div><div class="toggle-sub">Allow trading squishies</div></div><label class="toggle-switch"><input type="checkbox" id="toggle-trade" checked><span class="toggle-slider"></span></label></div>
       <div class="toggle-row"><div><div class="toggle-label">Daily Limit</div><div class="toggle-sub">Max 30 min per day</div></div><label class="toggle-switch"><input type="checkbox" id="toggle-limit"><span class="toggle-slider"></span></label></div>
       <div class="toggle-row"><div><div class="toggle-label">Push Notifications</div><div class="toggle-sub">Event reminders</div></div><label class="toggle-switch"><input type="checkbox" id="toggle-notif" checked><span class="toggle-slider"></span></label></div>
@@ -1098,7 +1099,7 @@ let state = {
   version:4,
   collected:[], counts:{}, totalSqueezes:0, streak:0, lastVisit:null,
   spotsVisited:new Set(), avatar:'🐿️', name:'Squish Explorer',
-  badges:new Set(), friendCode:'SQSH-'+(7000+Math.floor(Math.random()*2999)), soundEnabled:true, tradeEnabled:true, dailyLimitEnabled:false, playTimeToday:0, lastLimitDay:'', parentPin:'0000',
+  badges:new Set(), friendCode:'SQSH-'+(7000+Math.floor(Math.random()*2999)), soundEnabled:true, musicEnabled:true, tradeEnabled:true, dailyLimitEnabled:false, playTimeToday:0, lastLimitDay:'', parentPin:'0000',
   friendship:{}, lastDailyGift:null, dailyGiftDay:0,
   firstTime:true, xp:0, isPro:false, starterPackClaimed:false,
   coins:0, ownedFurniture:['rug_basic','table_basic','lamp_basic'], placedFurniture:[
@@ -1141,6 +1142,7 @@ try {
       state.isPro          = bool(parsed.isPro, false);
       state.starterPackClaimed = bool(parsed.starterPackClaimed, false);
       state.soundEnabled   = bool(parsed.soundEnabled, true);
+      state.musicEnabled   = bool(parsed.musicEnabled, true);
       state.tradeEnabled   = bool(parsed.tradeEnabled, true);
       state.dailyLimitEnabled = bool(parsed.dailyLimitEnabled, false);
       state.avatar         = str(parsed.avatar, '🐿️');
@@ -7811,6 +7813,80 @@ function triggerRarityReaction(sq){
 
 let _ac=null;function getAC(){if(!_ac)_ac=new(window.AudioContext||window.webkitAudioContext)();if(_ac.state==='suspended')_ac.resume();return _ac;}
 let _lim=null;function getLim(){const ac=getAC();if(!_lim){const comp=ac.createDynamicsCompressor();comp.threshold.value=-3;comp.knee.value=6;comp.ratio.value=8;comp.attack.value=0.001;comp.release.value=0.08;const g=ac.createGain();g.gain.value=0.72;comp.connect(g);g.connect(ac.destination);_lim=comp;}return _lim;}
+
+// ── Gentle ambient pad — soft drifting tones, calm and low ──
+// Slow overlapping sine "voices" form a warm chord; each voice slowly swells and
+// fades on its own timer so the texture gently drifts and never feels static or
+// loopy. Routed through its own low-gain bus so it sits softly under the SFX.
+let _music=null;
+// ── Background music: real looping audio file (like real games use) ──
+// Loaded lazily so it never blocks game startup. Routed through its own gain
+// (NOT the SFX compressor) so it stays clean. Loops seamlessly via AudioBuffer.
+const MUSIC_URL='nimbets-music.mp3';
+let _musicBuf=null, _musicSrc=null, _musicGain=null, _musicLoading=false;
+function startMusic(){
+  if(!state.musicEnabled)return;
+  if(_musicSrc)return; // already playing
+  try{
+    const ac=getAC();
+    if(ac.state==='suspended'){ ac.resume(); }
+    // If buffer already decoded, just (re)start playback
+    if(_musicBuf){ _playMusicBuffer(); return; }
+    if(_musicLoading)return;
+    _musicLoading=true;
+    fetch(MUSIC_URL).then(r=>r.arrayBuffer()).then(buf=>{
+      ac.decodeAudioData(buf, decoded=>{
+        _musicBuf=decoded; _musicLoading=false;
+        if(state.musicEnabled) _playMusicBuffer();
+      }, err=>{ _musicLoading=false; });
+    }).catch(e=>{ _musicLoading=false; });
+  }catch(e){}
+}
+function _playMusicBuffer(){
+  try{
+    const ac=getAC();
+    if(_musicSrc)return;
+    const src=ac.createBufferSource();
+    src.buffer=_musicBuf;
+    src.loop=true;                 // seamless looping
+    const g=ac.createGain();
+    const t=ac.currentTime;
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.linearRampToValueAtTime(0.55,t+1.5); // gentle fade-in to a comfortable level
+    src.connect(g);g.connect(ac.destination);
+    src.start(0);
+    _musicSrc=src; _musicGain=g;
+  }catch(e){}
+}
+function stopMusic(){
+  if(!_musicSrc)return;
+  try{
+    const ac=getAC(),t=ac.currentTime;
+    const src=_musicSrc, g=_musicGain;
+    g.gain.cancelScheduledValues(t);
+    g.gain.setValueAtTime(g.gain.value,t);
+    g.gain.linearRampToValueAtTime(0.0001,t+0.8); // smooth fade-out
+    setTimeout(()=>{ try{src.stop();}catch(e){} },900);
+  }catch(e){}
+  _musicSrc=null; _musicGain=null;
+}
+function setMusicEnabled(on){
+  state.musicEnabled=on;
+  if(on)startMusic();else stopMusic();
+}// Returning players skip the welcome screen, so startGame() (and its music start)
+// may never run. This one-time listener starts the ambient music on the FIRST tap
+// anywhere — which also satisfies the mobile autoplay-unlock requirement.
+(function(){
+  function kick(){
+    try{ if(state&&state.musicEnabled) startMusic(); }catch(e){}
+    document.removeEventListener('pointerdown',kick,true);
+    document.removeEventListener('touchstart',kick,true);
+    document.removeEventListener('click',kick,true);
+  }
+  document.addEventListener('pointerdown',kick,true);
+  document.addEventListener('touchstart',kick,true);
+  document.addEventListener('click',kick,true);
+})();
 function playSquish1(){try{const ac=getAC(),out=getLim(),t=ac.currentTime;const b=ac.createOscillator(),bG=ac.createGain(),bF=ac.createBiquadFilter();bF.type='lowpass';bF.frequency.value=280;b.type='sine';b.frequency.setValueAtTime(130,t);b.frequency.exponentialRampToValueAtTime(72,t+0.28);b.connect(bF);bF.connect(bG);bG.connect(out);bG.gain.setValueAtTime(0,t);bG.gain.linearRampToValueAtTime(0.38,t+0.018);bG.gain.exponentialRampToValueAtTime(0.001,t+0.32);b.start(t);b.stop(t+0.35);}catch(e){}}
 function playSquish2(){try{const ac=getAC(),out=getLim(),t=ac.currentTime;const b=ac.createOscillator(),bG=ac.createGain(),bF=ac.createBiquadFilter();bF.type='lowpass';bF.frequency.value=340;b.type='sine';b.frequency.setValueAtTime(108,t);b.frequency.exponentialRampToValueAtTime(52,t+0.35);b.connect(bF);bF.connect(bG);bG.connect(out);bG.gain.setValueAtTime(0,t);bG.gain.linearRampToValueAtTime(0.46,t+0.016);bG.gain.exponentialRampToValueAtTime(0.001,t+0.42);b.start(t);b.stop(t+0.45);const w=ac.createOscillator(),wG=ac.createGain();w.type='triangle';w.frequency.value=310;w.connect(wG);wG.connect(out);wG.gain.setValueAtTime(0,t+0.02);wG.gain.linearRampToValueAtTime(0.09,t+0.06);wG.gain.exponentialRampToValueAtTime(0.001,t+0.38);w.start(t+0.02);w.stop(t+0.4);}catch(e){}}
 function playSquish3(){try{const ac=getAC(),out=getLim(),t=ac.currentTime;const b=ac.createOscillator(),bG=ac.createGain(),bF=ac.createBiquadFilter();bF.type='lowpass';bF.frequency.value=400;b.type='sine';b.frequency.setValueAtTime(118,t);b.frequency.exponentialRampToValueAtTime(44,t+0.38);b.connect(bF);bF.connect(bG);bG.connect(out);bG.gain.setValueAtTime(0,t);bG.gain.linearRampToValueAtTime(0.52,t+0.014);bG.gain.exponentialRampToValueAtTime(0.001,t+0.48);b.start(t);b.stop(t+0.5);const pop=ac.createOscillator(),popG=ac.createGain(),popF=ac.createBiquadFilter();popF.type='bandpass';popF.frequency.value=1400;popF.Q.value=3;pop.type='sine';pop.frequency.setValueAtTime(1600,t+0.06);pop.frequency.exponentialRampToValueAtTime(380,t+0.12);pop.connect(popF);popF.connect(popG);popG.connect(out);popG.gain.setValueAtTime(0,t+0.06);popG.gain.linearRampToValueAtTime(0.28,t+0.068);popG.gain.exponentialRampToValueAtTime(0.001,t+0.16);pop.start(t+0.06);pop.stop(t+0.18);[1480,1760,2200].forEach((freq,i)=>{const sp=ac.createOscillator(),spG=ac.createGain();sp.type='sine';sp.frequency.value=freq;sp.connect(spG);spG.connect(out);const st=t+0.15+i*0.055;spG.gain.setValueAtTime(0,st);spG.gain.linearRampToValueAtTime(0.07,st+0.012);spG.gain.exponentialRampToValueAtTime(0.001,st+0.22);sp.start(st);sp.stop(st+0.25);});}catch(e){}}
@@ -8615,18 +8691,22 @@ function openParentSettings(){
   document.getElementById('parent-modal').className='show';
   // Pre-fill toggles from current state
   const ts=document.getElementById('toggle-sound');
+  const tm=document.getElementById('toggle-music');
   const tt=document.getElementById('toggle-trade');
   const tl=document.getElementById('toggle-limit');
   if(ts)ts.checked=state.soundEnabled!==false;
+  if(tm)tm.checked=state.musicEnabled!==false;
   if(tt)tt.checked=state.tradeEnabled!==false;
   if(tl)tl.checked=state.dailyLimitEnabled===true;
 }
 function closeParent(){
   // Save toggle values to state
   const ts=document.getElementById('toggle-sound');
+  const tm=document.getElementById('toggle-music');
   const tt=document.getElementById('toggle-trade');
   const tl=document.getElementById('toggle-limit');
   if(ts)state.soundEnabled=ts.checked;
+  if(tm)setMusicEnabled(tm.checked);
   if(tt)state.tradeEnabled=tt.checked;
   if(tl)state.dailyLimitEnabled=tl.checked;
   saveState();
@@ -8682,6 +8762,8 @@ function rotateBaoMsg(){
 }
 
 function startGame(){
+  // First deliberate tap — safe place to start ambient music (mobile autoplay rule)
+  try{ if(state.musicEnabled) startMusic(); }catch(e){}
   // Day streak tracking
   const today = new Date().toDateString();
   if(state.lastVisit){
