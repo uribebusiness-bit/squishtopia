@@ -2114,7 +2114,14 @@ function drawSquishy(ctx, sq, x, y, r, bounce=0) {
   // ══════════════════════════════════════════════════════
   } else if(fam==='Puff Pals'){
     ctx.scale(squish,2-squish);
-    ctx.shadowColor='rgba(100,120,200,0.15)';ctx.shadowBlur=r*.7;ctx.shadowOffsetY=r*.28;
+    // A single soft ground shadow under the cloud (drawn once) — avoids the dense
+    // grey disc you get from letting all 8 puffs each cast their own drop-shadow.
+    ctx.save();
+    ctx.fillStyle='rgba(100,120,200,0.13)';
+    ctx.beginPath();ctx.ellipse(0,r*1.02,r*0.78,r*0.20,0,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+    // No canvas drop-shadow on the puffs themselves (that was the culprit).
+    ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetY=0;
 
     // ── Per-character cloud silhouettes — the SHAPE tells each one's story so
     // the six stop reading as one identical white blob. Each layout is a list
