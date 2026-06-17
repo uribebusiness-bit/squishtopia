@@ -3774,12 +3774,9 @@ function paintNightDetails(ctx,W,H){
 function drawWorldBg(ctx,W,H){
   const wc=getWorldCanvas(),SC=wc.width/WORLD_W;
   // Backstop fill — if the source-rect math ever yields nothing (viewport/bounds
-  // edge case on some devices), we still show world colors, never raw page cream.
-  const bgFill=ctx.createLinearGradient(0,0,0,H);
-  bgFill.addColorStop(0,'#b8e8f8');      // sky-ish top
-  bgFill.addColorStop(0.5,'#a8dca0');    // transition
-  bgFill.addColorStop(1,'#4db351');      // ground green
-  ctx.fillStyle=bgFill;ctx.fillRect(0,0,W,H);
+  // edge case on some devices), we still show a world color, never raw page cream.
+  // Flat green (not a gradient) so it can never itself appear as a visible band.
+  ctx.fillStyle='#4db351';ctx.fillRect(0,0,W,H);
   const sx=Math.max(0,Math.min(Math.round(camX*SC),wc.width-Math.ceil(W*SC)));
   const sy=Math.max(0,Math.min(Math.round(camY*SC),wc.height-Math.ceil(H*SC)));
   const sw=Math.min(Math.ceil(W*SC),wc.width-sx),sh=Math.min(Math.ceil(H*SC),wc.height-sy);
