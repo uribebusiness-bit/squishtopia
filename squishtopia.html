@@ -5,15 +5,15 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Squishtopia">
-<meta name="application-name" content="Squishtopia">
+<meta name="apple-mobile-web-app-title" content="Nimbets">
+<meta name="application-name" content="Nimbets">
 <meta name="description" content="Collect adorable squishies, decorate your treehouse, and explore a magical park. A collectible game for kids.">
 <meta name="theme-color" content="#FF8FAB">
 <meta name="mobile-web-app-capable" content="yes">
-<meta property="og:title" content="Squishtopia">
+<meta property="og:title" content="Nimbets">
 <meta property="og:description" content="Collect adorable squishies and decorate your treehouse!">
 <meta property="og:type" content="website">
-<title>Squishtopia</title>
+<title>Nimbets</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <script>
@@ -82,8 +82,8 @@
 
   // ── 2. Manifest as blob ──
   const manifest={
-    name:'Squishtopia',
-    short_name:'Squishtopia',
+    name:'Nimbets',
+    short_name:'Nimbets',
     description:'Collect adorable squishies, decorate your treehouse, and explore a magical park!',
     start_url:'.',
     display:'standalone',
@@ -426,7 +426,7 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
 <div id="app">
 <!-- WELCOME SCREEN -->
 <div id="screen-welcome" class="screen active">
-  <div class="welcome-title">Squishtopia</div>
+  <div class="welcome-title">Nimbets</div>
   <div class="welcome-sub">Collect · Squish · Explore</div>
   <div class="bao-bao-wrap">
     <canvas id="bao-canvas" width="160" height="160"></canvas>
@@ -768,7 +768,7 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
     <!-- Header -->
     <div style="background:linear-gradient(135deg,#7C3AED,#9C27B0);padding:24px 20px 20px;text-align:center">
       <div style="font-size:40px">✨</div>
-      <div style="font-size:20px;font-weight:900;color:white;margin-top:6px">Squishtopia Pro</div>
+      <div style="font-size:20px;font-weight:900;color:white;margin-top:6px">Nimbets Pro</div>
       <div style="font-size:12px;color:rgba(255,255,255,0.82);margin-top:4px">Free to unlock · Ask a grown-up</div>
     </div>
     <!-- Content -->
@@ -916,13 +916,13 @@ const XP_LEVELS = [
   {lvl:11, xp:2700, title:'Legendary Squisher',   color:'#FFD700'},
   {lvl:12, xp:3600, title:'Epic Wrangler',        color:'#FF9F43'},
   {lvl:13, xp:4800, title:'Mythic Collector',     color:'#C084FC'},
-  {lvl:14, xp:6300, title:'Squishtopia Scholar',  color:'#34D399'},
+  {lvl:14, xp:6300, title:'Nimbets Scholar',  color:'#34D399'},
   {lvl:15, xp:8200, title:'Elite Explorer',       color:'#60A5FA'},
   {lvl:16, xp:10500,title:'Supreme Squisher',     color:'#F472B6'},
   {lvl:17, xp:13500,title:'Squishy Sage',         color:'#FBBF24'},
   {lvl:18, xp:17000,title:'Grand Champion',       color:'#A78BFA'},
   {lvl:19, xp:21000,title:'Legendary Champion',   color:'#FB7185'},
-  {lvl:20, xp:26000,title:'Squishtopia Legend ✨', color:'#FFD700'},
+  {lvl:20, xp:26000,title:'Nimbets Legend ✨', color:'#FFD700'},
 ];
 
 const XP_REWARDS = {
@@ -1182,7 +1182,7 @@ function saveState(){
 }
 
 // ═══════════════════════════════════════════════════════
-// PREMIUM CHARACTER ENGINE — Squishtopia
+// PREMIUM CHARACTER ENGINE — Nimbets
 // Every family has a distinct silhouette.
 // Every character has a signature detail.
 // Art direction: Squishmallows × Sanrio × Pixar
@@ -6236,7 +6236,7 @@ function _buildShopTab(el){
   <div style="margin:0 14px 16px;background:linear-gradient(135deg,#9C27B0,#7B1FA2);border-radius:18px;padding:18px;display:flex;align-items:center;gap:14px">
     <span style="font-size:36px">${isPro?'🏆':'✨'}</span>
     <div style="flex:1">
-      <div style="font-size:14px;font-weight:900;color:white">${isPro?'Squishtopia Pro ✓':'Upgrade to Pro'}</div>
+      <div style="font-size:14px;font-weight:900;color:white">${isPro?'Nimbets Pro ✓':'Upgrade to Pro'}</div>
       <div style="font-size:11px;color:rgba(255,255,255,0.8);margin-top:2px">${proBannerText}</div>
     </div>
     ${proBannerBtn}
@@ -8667,7 +8667,7 @@ function showToast(msg){
 
 // ===== RESET =====
 function resetGame(){
-  if(!confirm('Reset all your Squishtopia progress? This cannot be undone!')) return;
+  if(!confirm('Reset all your Nimbets progress? This cannot be undone!')) return;
   try{ localStorage.removeItem('squishtopia_v3'); }catch(e){ console.warn('localStorage unavailable'); }
   location.reload();
 }
