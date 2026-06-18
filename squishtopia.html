@@ -14,6 +14,7 @@
 <meta property="og:description" content="Collect adorable squishies and decorate your treehouse!">
 <meta property="og:type" content="website">
 <title>Nimbets</title>
+  <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <script>
@@ -80,30 +81,6 @@
   appleLink.rel='apple-touch-icon';appleLink.href=icon192;
   document.head.appendChild(appleLink);
 
-  // ── 2. Manifest as blob ──
-  const manifest={
-    name:'Nimbets',
-    short_name:'Nimbets',
-    description:'Collect adorable squishies, decorate your treehouse, and explore a magical park!',
-    start_url:'.',
-    display:'standalone',
-    orientation:'portrait',
-    background_color:'#FFF5E6',
-    theme_color:'#FF8FAB',
-    categories:['games','kids'],
-    lang:'en',
-    icons:[
-      {src:icon192,sizes:'192x192',type:'image/png',purpose:'any maskable'},
-      {src:icon512,sizes:'512x512',type:'image/png',purpose:'any maskable'}
-    ],
-    screenshots:[],
-    shortcuts:[]
-  };
-  const manifestBlob=new Blob([JSON.stringify(manifest)],{type:'application/manifest+json'});
-  const manifestURL=URL.createObjectURL(manifestBlob);
-  const manifestLink=document.createElement('link');
-  manifestLink.rel='manifest';manifestLink.href=manifestURL;
-  document.head.appendChild(manifestLink);
 
   // ── 3. Service worker — cache-first for offline play ──
   if('serviceWorker' in navigator){
