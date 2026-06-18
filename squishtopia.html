@@ -14,7 +14,7 @@
 <meta property="og:description" content="Collect adorable squishies and decorate your treehouse!">
 <meta property="og:type" content="website">
 <title>Nimbets</title>
-  <link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <script>
@@ -81,6 +81,7 @@
   appleLink.rel='apple-touch-icon';appleLink.href=icon192;
   document.head.appendChild(appleLink);
 
+  // ── 2. Manifest is now a static file (manifest.json) linked in <head> ──
 
   // ── 3. Service worker — cache-first for offline play ──
   if('serviceWorker' in navigator){
@@ -749,7 +750,7 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
     <!-- Header -->
     <div style="background:linear-gradient(135deg,#7C3AED,#9C27B0);padding:24px 20px 20px;text-align:center">
       <div style="font-size:40px">✨</div>
-      <div style="font-size:20px;font-weight:900;color:white;margin-top:6px">Nimbets Pro</div>
+      <div style="font-size:20px;font-weight:900;color:white;margin-top:6px">Bonus Pack</div>
       <div style="font-size:12px;color:rgba(255,255,255,0.82);margin-top:4px">Free to unlock · Ask a grown-up</div>
     </div>
     <!-- Content -->
@@ -757,7 +758,7 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
       <!-- Already Pro -->
       <div id="pro-already" style="display:none;text-align:center;padding:10px 0 16px">
         <div style="font-size:32px">🏆</div>
-        <div style="font-size:16px;font-weight:900;color:#7C3AED;margin-top:8px">You're already Pro!</div>
+        <div style="font-size:16px;font-weight:900;color:#7C3AED;margin-top:8px">Bonus Pack unlocked!</div>
         <div style="font-size:12px;color:#888;margin-top:4px">All exclusive content is unlocked.</div>
         <button onclick="closeProModal()" style="margin-top:16px;width:100%;background:#7C3AED;color:white;border:none;border-radius:16px;padding:13px;font-size:14px;font-weight:800;cursor:pointer">Awesome! ✨</button>
       </div>
@@ -766,15 +767,15 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
         <div style="border:2.5px solid #FF9F43;border-radius:18px;padding:16px;margin-bottom:12px;position:relative">
           <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#FF9F43;color:white;font-size:10px;font-weight:900;padding:3px 12px;border-radius:20px;white-space:nowrap">🎁 FREE UNLOCK</div>
           <div style="font-size:13px;font-weight:900;color:#2D1B00;text-align:center;margin-bottom:8px">Everything unlocks at once:</div>
-          <div style="font-size:11px;color:#666;line-height:1.7;text-align:center">✨ All Pro furniture<br>🪙 1,000 bonus coins<br>🐿️ Exclusive squirrel costume<br>🏡 Up to 8 home residents</div>
+          <div style="font-size:11px;color:#666;line-height:1.7;text-align:center">✨ All bonus furniture<br>🪙 1,000 bonus coins<br>🐿️ Exclusive squirrel costume<br>🏡 Up to 8 home residents</div>
         </div>
-        <button onclick="unlockProMode()" style="width:100%;background:linear-gradient(135deg,#7C3AED,#9C27B0);color:white;border:none;border-radius:16px;padding:14px;font-size:15px;font-weight:900;cursor:pointer">🔓 Unlock Pro Mode (Free)</button>
-        <div style="margin-top:10px;font-size:10px;color:#BBB;text-align:center;line-height:1.5">Pro Mode is free. A grown-up enters the parent PIN to unlock it.</div>
+        <button onclick="unlockProMode()" style="width:100%;background:linear-gradient(135deg,#7C3AED,#9C27B0);color:white;border:none;border-radius:16px;padding:14px;font-size:15px;font-weight:900;cursor:pointer">🔓 Unlock Bonus Pack (Free)</button>
+        <div style="margin-top:10px;font-size:10px;color:#BBB;text-align:center;line-height:1.5">The Bonus Pack is free. A grown-up enters the parent PIN to unlock it.</div>
       </div>
       <!-- PIN confirmation view -->
       <div id="pro-pin-view" style="display:none;text-align:center">
         <div style="font-size:14px;font-weight:800;color:#2D1B00;margin-bottom:4px">Grown-up permission</div>
-        <div style="font-size:12px;color:#888;margin-bottom:14px" id="pro-pin-desc">Enter the parent PIN to unlock Pro Mode</div>
+        <div style="font-size:12px;color:#888;margin-bottom:14px" id="pro-pin-desc">Enter the parent PIN to unlock the Bonus Pack</div>
         <div style="display:flex;justify-content:center;gap:8px;margin-bottom:16px" id="pro-pin-dots">
           <div style="width:14px;height:14px;border-radius:50%;background:#EEE;border:2px solid #DDD" id="ppd0"></div>
           <div style="width:14px;height:14px;border-radius:50%;background:#EEE;border:2px solid #DDD" id="ppd1"></div>
@@ -6177,7 +6178,7 @@ function _buildShopTab(el){
     } else if(isOwned){
       btn=`<button onclick="_placeFurniture('${item.id}')" style="width:100%;background:#4CAF50;border:none;border-radius:12px;padding:7px;font-size:11px;font-weight:800;color:white;cursor:pointer;margin-top:2px">Place</button>`;
     } else if(isPaid){
-      btn=`<button onclick="openProModal()" style="width:100%;background:linear-gradient(135deg,#9C27B0,#7B1FA2);border:none;border-radius:12px;padding:7px;font-size:11px;font-weight:800;color:white;cursor:pointer;margin-top:2px">🔒 Pro Only</button>`;
+      btn=`<button onclick="openProModal()" style="width:100%;background:linear-gradient(135deg,#9C27B0,#7B1FA2);border:none;border-radius:12px;padding:7px;font-size:11px;font-weight:800;color:white;cursor:pointer;margin-top:2px">🔒 Bonus</button>`;
     } else if(item.cost===0){
       btn=`<button onclick="_buyFurniture('${item.id}')" style="width:100%;background:#FF9F43;border:none;border-radius:12px;padding:7px;font-size:11px;font-weight:800;color:white;cursor:pointer;margin-top:2px">Get Free!</button>`;
     } else {
@@ -6201,17 +6202,17 @@ function _buildShopTab(el){
   });
 
   const proBannerBtn = isPro
-    ? `<div style="background:rgba(255,255,255,0.2);border-radius:14px;padding:8px 14px;font-size:12px;font-weight:900;color:white">✓ PRO</div>`
-    : `<button onclick="openProModal()" style="background:white;border:none;border-radius:14px;padding:8px 14px;font-size:12px;font-weight:900;color:#7B1FA2;cursor:pointer;white-space:nowrap">Get Pro</button>`;
+    ? `<div style="background:rgba(255,255,255,0.2);border-radius:14px;padding:8px 14px;font-size:12px;font-weight:900;color:white">✓ UNLOCKED</div>`
+    : `<button onclick="openProModal()" style="background:white;border:none;border-radius:14px;padding:8px 14px;font-size:12px;font-weight:900;color:#7B1FA2;cursor:pointer;white-space:nowrap">Unlock</button>`;
   const proBannerText = isPro
-    ? 'All exclusive furniture unlocked! Thanks for going Pro. ✨'
+    ? 'All exclusive furniture unlocked! Thanks for unlocking the Bonus Pack. ✨'
     : 'Unlock all exclusive furniture, 1000 bonus coins, and exclusive content — free with a grown-up\'s help.';
 
   html+=`</div>
   <div style="margin:0 14px 16px;background:linear-gradient(135deg,#9C27B0,#7B1FA2);border-radius:18px;padding:18px;display:flex;align-items:center;gap:14px">
     <span style="font-size:36px">${isPro?'🏆':'✨'}</span>
     <div style="flex:1">
-      <div style="font-size:14px;font-weight:900;color:white">${isPro?'Nimbets Pro ✓':'Upgrade to Pro'}</div>
+      <div style="font-size:14px;font-weight:900;color:white">${isPro?'Bonus Pack ✓':'Unlock Bonus Pack'}</div>
       <div style="font-size:11px;color:rgba(255,255,255,0.8);margin-top:2px">${proBannerText}</div>
     </div>
     ${proBannerBtn}
@@ -6516,7 +6517,7 @@ function _placeResident(id){
   const current=(state.placedResidents||[]).filter(r=>r.id!==id).length;
   const cap=state.isPro?8:6;
   if(current>=cap){
-    showToast(state.isPro?'Room is full! Max 8 residents 🏡':'Room is full! Upgrade Pro for up to 8 🌟');
+    showToast(state.isPro?'Room is full! Max 8 residents 🏡':'Room is full! Unlock the Bonus Pack for up to 8 🌟');
     return;
   }
   _placingResidentId=id;_placingFurnitureId=null;
@@ -8836,7 +8837,7 @@ function closeProModal(){
 
 function unlockProMode(){
   _proPurchaseType = 'pro';
-  _showProPin('Enter the parent PIN to unlock Pro Mode');
+  _showProPin('Enter the parent PIN to unlock the Bonus Pack');
 }
 
 function _showProPin(desc){
@@ -8891,8 +8892,8 @@ function _confirmProPurchase(){
   }
   saveState();
   closeProModal();
-  _triggerLevelUp({lvl:'✨', title:'Pro Mode Unlocked!'});
-  setTimeout(()=>showToast('🎁 +1000🪙 · All Pro furniture unlocked!'),600);
+  _triggerLevelUp({lvl:'✨', title:'Bonus Pack Unlocked!'});
+  setTimeout(()=>showToast('🎁 +1000🪙 · All bonus furniture unlocked!'),600);
   // Rebuild shop to reflect new state
   const content = document.getElementById('home-tab-content');
   if(content){ const tab=document.getElementById('home-tab-shop'); if(tab&&tab.style.borderBottom&&tab.style.borderBottom.includes('8b4513')) _buildShopTab(content); }
