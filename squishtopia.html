@@ -6195,7 +6195,7 @@ function _buildShopTab(el){
       ${iconHtml}
       <div style="font-size:12px;font-weight:800;color:#2D1B00;text-align:center">${item.name}</div>
       <div style="font-size:10px;color:#888;text-align:center;font-style:italic">${item.desc}</div>
-      <div style="font-size:9px;font-weight:800;padding:2px 8px;border-radius:10px;background:${rc}22;color:${rc}">${item.rarity.toUpperCase()}</div>
+      <div style="font-size:9px;font-weight:800;padding:2px 8px;border-radius:10px;background:${rc}22;color:${rc}">${item.rarity==='pro'?'BONUS':item.rarity.toUpperCase()}</div>
       ${colorBtn}
       ${btn}
     </div>`;
