@@ -1,0 +1,19 @@
+{
+  "name": "Nimbets: Collect & Care",
+  "short_name": "Nimbets",
+  "description": "Collect adorable squishies, decorate your room, and explore a magical park!",
+  "start_url": "squishtopia.html",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFF5E6",
+  "theme_color": "#FF8FAB",
+  "categories": ["games", "kids"],
+  "lang": "en",
+  "icons": [
+    { "src": "icon192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
