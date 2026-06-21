@@ -1053,11 +1053,11 @@ const BADGES = [
 ];
 
 const EVENTS = [
-  {name:'Bao Festival',      desc:'Rare Bao Bunch squishies have doubled spawn rates all weekend!',  banner:'🥟🎉🥟',color:'#FF8A65',bg:'#FFF3E0',status:'live',   time:'Ends in 2 days',  family:'Doughy Pals',  boost:3},
-  {name:'Night Garden',      desc:'Special Garden Gooies squishies appear more often. Find them all!', banner:'🌙✨🌿',color:'#8E24AA',bg:'#F3E5F5',status:'live',   time:'Ends in 5 days',  family:'Garden Gooies', boost:2.5},
-  {name:'Puddle Parade',     desc:'Jelly Jem variants spawn at Puddle Peak. Three new colorways!',   banner:'💧💎💧',color:'#1565C0',bg:'#E3F2FD',status:'soon',   time:'Starts in 3 days', family:'Jelly Jems',   boost:2},
-  {name:'Spring Bloom',      desc:'Garden Gooies event — Bloomie and Petal have exclusive variants.', banner:'🌸🌷🌺',color:'#E91E63',bg:'#FCE4EC',status:'ended',  time:'Ended',            family:'Garden Gooies', boost:2},
-  {name:'Cube Carnival',     desc:'All Cubelet rarities up one tier. Legendary Squaremen spotted!',   banner:'🎪🔷🎠',color:'#5C6BC0',bg:'#E8EAF6',status:'soon',   time:'Starts in 1 week', family:'Cubelets',     boost:2},
+  {name:'Bao Festival',      desc:'Rare Bao Bunch squishies have doubled spawn rates right now!',  banner:'🥟🎉🥟',color:'#FF8A65',bg:'#FFF3E0',status:'live',   time:'Limited time!',  family:'Doughy Pals',  boost:3},
+  {name:'Night Garden',      desc:'Special Garden Gooies squishies appear more often. Find them all!', banner:'🌙✨🌿',color:'#8E24AA',bg:'#F3E5F5',status:'live',   time:'Limited time!',  family:'Garden Gooies', boost:2.5},
+  {name:'Puddle Parade',     desc:'Jelly Jem variants spawn at Puddle Peak. Three new colorways!',   banner:'💧💎💧',color:'#1565C0',bg:'#E3F2FD',status:'soon',   time:'Coming soon', family:'Jelly Jems',   boost:2},
+  {name:'Spring Bloom',      desc:'Garden Gooies event — Bloomie and Petal have exclusive variants.', banner:'🌸🌷🌺',color:'#E91E63',bg:'#FCE4EC',status:'ended',  time:'Past event',            family:'Garden Gooies', boost:2},
+  {name:'Cube Carnival',     desc:'All Cubelet rarities up one tier. Legendary Squaremen spotted!',   banner:'🎪🔷🎠',color:'#5C6BC0',bg:'#E8EAF6',status:'soon',   time:'Coming soon', family:'Cubelets',     boost:2},
 ];
 
 const AVATARS = ['🐿️','🐻','🦊','🐸','🐼','🦁','🐨','🦄','🐯','🐺','🦋','🐙','🦀','🐢','🦩','🐝','🦔','🐋','🦓','🦒'];
@@ -8548,12 +8548,22 @@ function _mysteryReveal(winner){
     }
     stage.innerHTML=sparks+`
       <div style="animation:mr-pop .5s cubic-bezier(.2,1.4,.4,1) forwards;display:flex;flex-direction:column;align-items:center;gap:8px">
-        <div style="font-size:104px;filter:drop-shadow(0 6px 16px ${rarityColor}88)">${winner.icon||'🫧'}</div>
+        <canvas id="mr-squishy" width="140" height="140" style="width:140px;height:140px;filter:drop-shadow(0 6px 16px ${rarityColor}88)"></canvas>
         <div style="background:#fff;border-radius:16px;padding:8px 18px;text-align:center;box-shadow:0 4px 18px rgba(0,0,0,.25)">
           <div style="font-size:18px;font-weight:900;color:#2D1B00">${winner.name}</div>
           <div style="font-size:11px;font-weight:800;color:${rarityColor};text-transform:uppercase;letter-spacing:.5px;margin-top:2px">${winner.rarity}</div>
         </div>
       </div>`;
+    // Draw the REAL squishy art (same renderer the shelf/play screen use),
+    // so the reveal matches exactly what gets collected — not a placeholder emoji.
+    const mc=document.getElementById('mr-squishy');
+    if(mc && typeof _safeDraw==='function'){
+      const dpr=window.devicePixelRatio||1;
+      mc.width=Math.round(140*dpr); mc.height=Math.round(140*dpr);
+      const mctx=mc.getContext('2d');
+      mctx.setTransform(dpr,0,0,dpr,0,0);
+      _safeDraw(mctx, winner, 70, 72, 52, 0);
+    }
     setTimeout(()=>{
       ov.style.opacity='0';
       setTimeout(()=>{ ov.remove(); openSquishPlay(winner,'convert'); },260);
