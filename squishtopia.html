@@ -7405,11 +7405,13 @@ function showScreen(id){
 
 // ===== SQUISH PLAY =====
 let currentSquishy=null, squeezeCount=0, playT=0, playAnim=null, squishScale=1;
+let _squishSource=null;
 let _gloomieSmileT=0; // counts down after a Gloomy squeeze — drives the smile
 let squishParticles=[];
 
 function openSquishPlay(sq, spotId) {
   currentSquishy=sq; squeezeCount=0; squishParticles=[];
+  _squishSource = spotId; // remember origin ('convert' = came from Mystery Converter)
   document.getElementById('play-name').textContent=sq.name;
   // Show family tag below name if element exists
   const famTag=document.getElementById('play-family');
@@ -7448,6 +7450,7 @@ function closePlay(){
   joyVX=0;joyVY=0;_sprintKey=false;_sprintBtn=false;joySprinting=false;
   const knob=document.getElementById('joy-knob');
   if(knob) knob.style.transform='translate(-50%,-50%)';
+  if(_squishSource==='convert'){ _squishSource=null; showScreen('trade'); buildTrade(); return; }
   showScreen('park');
 }
 function drawPlayLoop(){
@@ -7724,6 +7727,14 @@ function doCollect(){
     showToast(`+ Duplicate ${sq.name}! +${bonusCoin}🪙`);
   }
   setTimeout(()=>{
+    // If this squishy came from the Mystery Converter, return there so the
+    // player can roll again — not back out to the park map.
+    if(_squishSource==='convert'){
+      _squishSource=null;
+      showScreen('trade');
+      buildTrade();
+      return;
+    }
     sqX+=(Math.random()>.5?90:-90)+(Math.random()-.5)*40;
     sqY+=(Math.random()>.5?90:-90)+(Math.random()-.5)*40;
     sqX=Math.max(40,Math.min(WORLD_W-40,sqX));
@@ -8499,14 +8510,10 @@ function _convertDupes(tierIdx){
 }
 
 // Animated mystery-pod reveal: shake + glow build-up, burst, then the squishy.
-// Deliberately does NOT show the rarity up front — the surprise is the point.
 function _mysteryReveal(winner){
-  // Tear down any existing reveal overlay
   const old=document.getElementById('mystery-reveal');
   if(old)old.remove();
-
   const rarityColor={common:'#9E9E9E',uncommon:'#43A047',rare:'#1E88E5',epic:'#8E24AA',legendary:'#FF9F43',mythic:'#E91E63'}[winner.rarity]||'#FF9F43';
-
   const ov=document.createElement('div');
   ov.id='mystery-reveal';
   ov.style.cssText='position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(20,12,4,0.78);backdrop-filter:blur(6px);opacity:0;transition:opacity .25s';
@@ -8526,21 +8533,18 @@ function _mysteryReveal(winner){
   `;
   document.body.appendChild(ov);
   requestAnimationFrame(()=>{ov.style.opacity='1';});
-
   let opened=false;
   const burst=()=>{
     if(opened)return; opened=true;
     const stage=document.getElementById('mr-stage');
     const hint=document.getElementById('mr-hint');
     if(hint)hint.style.display='none';
-    // spark burst
     let sparks='';
     for(let i=0;i<10;i++){
       const ang=(i/10)*Math.PI*2, dist=110;
       const x=Math.cos(ang)*dist, y=Math.sin(ang)*dist;
       sparks+=`<div style="position:absolute;left:50%;top:50%;font-size:26px;animation:mr-spark .6s ease-out forwards;transform:translate(${x}px,${y}px)">✨</div>`;
     }
-    // squishy reveal card
     stage.innerHTML=sparks+`
       <div style="animation:mr-pop .5s cubic-bezier(.2,1.4,.4,1) forwards;display:flex;flex-direction:column;align-items:center;gap:8px">
         <div style="font-size:104px;filter:drop-shadow(0 6px 16px ${rarityColor}88)">${winner.icon||'🫧'}</div>
@@ -8549,14 +8553,11 @@ function _mysteryReveal(winner){
           <div style="font-size:11px;font-weight:800;color:${rarityColor};text-transform:uppercase;letter-spacing:.5px;margin-top:2px">${winner.rarity}</div>
         </div>
       </div>`;
-    // hold the moment, then hand off to the full squishy screen
     setTimeout(()=>{
       ov.style.opacity='0';
       setTimeout(()=>{ ov.remove(); openSquishPlay(winner,'convert'); },260);
     },1300);
   };
-
-  // Tap to open, or auto-open after a suspense beat
   ov.addEventListener('click',burst);
   setTimeout(burst,2200);
 }
