@@ -5966,8 +5966,11 @@ function _tickResAI(ai, id, W, H, t){
   const r = Math.random();
   let cum = 0;
 
-  // Special furniture reactions (override personality)
-  if(hasRadio && r < 0.50){
+  // Special furniture reactions (occasional — must not crowd out sleep/sit/eat).
+  // Radio dancing is fun but was firing 50% of the time and returning early,
+  // which starved every other behavior (beds were never used). Now it's a
+  // smaller chance so residents also sleep, sit, and eat when that furniture exists.
+  if(hasRadio && r < 0.18){
     ai.state=RES_STATES.DANCE; ai.targetX=X_MIN+Math.random()*(X_MAX-X_MIN); ai.targetY=FLOOR_Y_MIN+Math.random()*(FLOOR_Y_MAX-FLOOR_Y_MIN);
     ai.stateTimer=150+Math.floor(Math.random()*120); ai.bubble='note'; ai.bubbleTimer=ai.stateTimer; return;
   }
