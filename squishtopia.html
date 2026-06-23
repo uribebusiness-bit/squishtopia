@@ -83,56 +83,14 @@
 
   // ── 2. Manifest is now a static file (manifest.json) linked in <head> ──
 
-  // ── 3. Service worker — cache-first for offline play ──
+  // ── 3. Service worker — real static file (service-worker.js) for offline play ──
+  // Blob-based SWs are blocked in TWAs / many browsers, so we register a real
+  // file hosted at the site root. This is what makes the game work offline.
   if('serviceWorker' in navigator){
-    const swCode=`
-const CACHE='squishtopia-v2';
-const ASSETS=['/'];
-self.addEventListener('install',e=>{
-  e.waitUntil(
-    caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())
-  );
-});
-self.addEventListener('activate',e=>{
-  e.waitUntil(
-    caches.keys().then(keys=>Promise.all(
-      keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))
-    )).then(()=>self.clients.claim())
-  );
-});
-self.addEventListener('fetch',e=>{
-  if(e.request.method!=='GET')return;
-  // Network-first for the app HTML (navigations) so a new deploy is picked up
-  // instead of users being stuck on a stale cached page; fall back to cache
-  // only when offline. Other GET requests stay cache-first for speed/offline.
-  const isDoc = e.request.mode==='navigate' ||
-                (e.request.headers.get('accept')||'').includes('text/html');
-  if(isDoc){
-    e.respondWith(
-      fetch(e.request).then(res=>{
-        if(res&&res.status===200){const clone=res.clone();caches.open(CACHE).then(c=>c.put(e.request,clone));}
-        return res;
-      }).catch(()=>caches.match(e.request).then(c=>c||caches.match('/')))
-    );
-    return;
-  }
-  e.respondWith(
-    caches.match(e.request).then(cached=>{
-      if(cached)return cached;
-      return fetch(e.request).then(res=>{
-        if(res&&res.status===200){
-          const clone=res.clone();
-          caches.open(CACHE).then(c=>c.put(e.request,clone));
-        }
-        return res;
-      }).catch(()=>cached);
-    })
-  );
-});`;
-    const swBlob=new Blob([swCode],{type:'application/javascript'});
-    const swURL=URL.createObjectURL(swBlob);
-    navigator.serviceWorker.register(swURL,{scope:'/'})
-      .catch(()=>{}); // silent fail — works fine without SW too
+    window.addEventListener('load',()=>{
+      navigator.serviceWorker.register('service-worker.js')
+        .catch(err=>console.warn('SW registration failed:',err));
+    });
   }
 })();
 </script>
