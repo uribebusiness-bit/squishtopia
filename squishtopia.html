@@ -3732,7 +3732,18 @@ function clampCam(W,H){camX=Math.max(0,Math.min(WORLD_W-W,camX));camY=Math.max(0
 
 function markExplored(wx,wy){
   const cx=Math.floor(wx/FOG_GRID),cy=Math.floor(wy/FOG_GRID),key=cx+','+cy;
-  if(!exploredCells[key]){exploredCells[key]=1;const tot=Math.ceil(WORLD_W/FOG_GRID)*Math.ceil(WORLD_H/FOG_GRID);exploredPct=Math.min(100,Math.round(Object.keys(exploredCells).length/tot*100));const el=document.getElementById('explore-pct');if(el)el.textContent=exploredPct+'% explored';}
+  if(!exploredCells[key]){
+    exploredCells[key]=1;
+    const tot=Math.ceil(WORLD_W/FOG_GRID)*Math.ceil(WORLD_H/FOG_GRID);
+    // The squirrel's reveal radius can't physically reach every edge/corner
+    // tile, so true 100% of raw cells is unreachable. Scale against the
+    // realistically-coverable fraction (~88% of cells) so the counter reaches
+    // 100% when the park is meaningfully fully explored.
+    const COVERABLE=0.88;
+    const raw=Object.keys(exploredCells).length/(tot*COVERABLE);
+    exploredPct=Math.min(100,Math.floor(raw*100));
+    const el=document.getElementById('explore-pct');if(el)el.textContent=exploredPct+'% explored';
+  }
 }
 function markSquirrelArea(){
   const r=3,cx=Math.floor(sqX/FOG_GRID),cy=Math.floor(sqY/FOG_GRID);
@@ -6726,7 +6737,7 @@ const HOME_WX = WORLD_W * 0.35, HOME_WY = WORLD_H * 0.42;
 let homeShown = false, homeReveal = 0, homeEntryCooldown = 0;
 
 function drawSquirrelHome(ctx, W, H){
-  if(exploredPct < 100) return;
+  if(exploredPct < 95) return;
 
   const q1=Object.keys(exploredCells).some(k=>{const[cx,cy]=k.split(',').map(Number);return cx<40&&cy<30;});
   const q2=Object.keys(exploredCells).some(k=>{const[cx,cy]=k.split(',').map(Number);return cx>=40&&cy<30;});
@@ -7240,10 +7251,11 @@ function drawAmbient(ctx,W,H){
   fireflies.forEach(f=>{const sp=w2s(f.wx,f.wy);if(sp.x<-20||sp.x>W+20||sp.y<-20||sp.y>H+20)return;const glow=0.3+0.7*Math.abs(Math.sin(parkT*0.04+f.phase));const fInt=0.35+0.65*nightAmt;ctx.save();ctx.globalAlpha=glow*.75*fInt;const rg=ctx.createRadialGradient(sp.x,sp.y,0,sp.x,sp.y,f.size*3);rg.addColorStop(0,'rgba(200,255,150,.9)');rg.addColorStop(1,'rgba(200,255,150,0)');ctx.fillStyle=rg;ctx.beginPath();ctx.arc(sp.x,sp.y,f.size*3,0,Math.PI*2);ctx.fill();ctx.globalAlpha=glow*fInt;ctx.fillStyle='#d0ff80';ctx.beginPath();ctx.arc(sp.x,sp.y,f.size,0,Math.PI*2);ctx.fill();ctx.restore();});
 }
 
-// Gated entry to the home room — must reach 100% exploration (the home only
-// "appears" at 100%, so the Shelf shortcut must enforce the same rule).
+// Gated entry to the home room — the home "appears" once the park is fully
+// explored (>=95%, since edge tiles aren't all physically reachable), so the
+// Shelf shortcut enforces the same rule.
 function goHome(){
-  if(exploredPct < 100){
+  if(exploredPct < 95){
     showToast('🌳 Explore the whole park to unlock your home! ('+exploredPct+'% explored)');
     return;
   }
