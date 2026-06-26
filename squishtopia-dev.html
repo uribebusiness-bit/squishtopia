@@ -610,7 +610,7 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
   <!-- Top bar: coin balance + back -->
   <div id="home-topbar" style="position:absolute;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:12px 16px 8px;background:linear-gradient(180deg,rgba(139,69,19,0.95),rgba(160,90,30,0.90));backdrop-filter:blur(4px)">
     <button onclick="showScreen('park')" style="background:rgba(255,255,255,0.18);border:none;border-radius:50%;width:38px;height:38px;font-size:18px;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center">←</button>
-    <div style="font-size:17px;font-weight:900;color:white;text-shadow:0 1px 4px rgba(0,0,0,0.3)">🏡 Home Sweet Home</div>
+    <div id="home-room-title" style="font-size:17px;font-weight:900;color:white;text-shadow:0 1px 4px rgba(0,0,0,0.3)">🏡 Home Sweet Home</div>
     <div id="home-coin-display" style="background:rgba(255,220,80,0.25);border:1.5px solid rgba(255,220,80,0.5);border-radius:20px;padding:5px 12px;display:flex;align-items:center;gap:5px;cursor:pointer" onclick="showScreen('trade')">
       <span style="font-size:16px"><svg width="16" height="16" viewBox="0 0 100 100" style="vertical-align:middle"><ellipse cx="50" cy="54" rx="38" ry="38" fill="#C8860D"/><ellipse cx="50" cy="48" rx="38" ry="38" fill="#FFC83D"/><ellipse cx="50" cy="48" rx="30" ry="30" fill="#F5A623"/><ellipse cx="50" cy="48" rx="30" ry="30" fill="none" stroke="#FFE08A" stroke-width="2"/><text x="50" y="60" text-anchor="middle" font-size="34" font-weight="900" fill="#B5710A" font-family="Nunito,sans-serif">N</text><ellipse cx="40" cy="36" rx="7" ry="4" fill="#FFF3C4" opacity="0.8" transform="rotate(-30 40 36)"/></svg></span>
       <span id="home-coin-count" style="font-size:14px;font-weight:900;color:#ffe066">0</span>
@@ -1052,6 +1052,10 @@ let state = {
   ],
   placedResidents:[],
   furnitureColors:{rug_basic:'terracotta', bed_cozy:'pink'},
+  currentRoom:'living',
+  // Inactive room's data parked here; the active room always lives in
+  // placedFurniture/placedResidents so every existing function keeps working.
+  rooms:{ kitchen:{ furniture:[], residents:[] } },
 };
 try {
   const saved = localStorage.getItem('squishtopia_v3');
@@ -1100,18 +1104,26 @@ try {
         state.placedFurniture=arr(parsed.placedFurniture, _defPlaced);
       }
       state.placedResidents=arr(parsed.placedResidents, []);
+      state.currentRoom=(parsed.currentRoom==='kitchen'||parsed.currentRoom==='living')?parsed.currentRoom:'living';
+      // Parked (inactive-room) data. Whatever room isn't active is stored here.
+      const _pRooms=obj(parsed.rooms, {});
+      const _pKit=obj(_pRooms.kitchen, {});
+      state.rooms={ kitchen:{ furniture:arr(_pKit.furniture,[]), residents:arr(_pKit.residents,[]) } };
       state.furnitureColors=obj(parsed.furnitureColors, {rug_basic:'terracotta',bed_cozy:'pink'});
       // Drop any collected/resident ids that no longer exist in the catalogue,
       // so renamed/removed squishies can't cascade into undefined lookups.
       const _validIds = new Set(SQUISHIES.map(s=>s.id));
       state.collected = state.collected.filter(id=>_validIds.has(id));
       state.placedResidents = state.placedResidents.filter(r=>r && _validIds.has(r.id));
+      if(state.rooms&&state.rooms.kitchen){
+        state.rooms.kitchen.residents = (state.rooms.kitchen.residents||[]).filter(r=>r && _validIds.has(r.id));
+      }
 
       // ── Save schema versioning ──
       // Older saves (or saves with no version) are brought forward here so
       // future feature additions (new furniture/cosmetics/etc.) never break an
       // existing player's save. Each migration step is additive and idempotent.
-      const SAVE_VERSION = 4;
+      const SAVE_VERSION = 5;
       let sv = num(parsed.version, 0);
       if(sv < SAVE_VERSION){
         // v<4: ensure fields introduced over time exist with sane defaults.
@@ -1121,6 +1133,10 @@ try {
         // (future migrations append here, guarded by version checks)
         sv = SAVE_VERSION;
       }
+      // Always boot into the living room: the top-level placedFurniture/
+      // placedResidents fields persist the LIVING room, so the active room must
+      // be living on load or they'd be mismatched. Kitchen data stays parked.
+      state.currentRoom='living';
       state.version = SAVE_VERSION;
     }
   }
@@ -4271,9 +4287,223 @@ function handleParkTap(mx,my){
   for(let i=0;i<pods.length;i++){const pod=pods[i];if(pod.collected||pod.revealAmt<0.35)continue;if(Math.hypot(wx-pod.wx,wy-pod.wy)<pod.r*2.8){pod.collected=true;podOpenCooldown=200;_collectingPod=pod;openSquishPlay(pod.sq,pod.wob.toString());return;}}
 }
 
+// ── ROOM SWITCHING ──────────────────────────────────────────────
+// The active room's furniture/residents always live in state.placedFurniture /
+// state.placedResidents so every existing renderer, tap handler, shop and
+// residents tab keeps working unchanged. Switching rooms just swaps which
+// dataset is "active": we park the current room's arrays into state.rooms and
+// load the target room's arrays into the active slots.
+function switchRoom(target){
+  if(target!=='kitchen'&&target!=='living') return;
+  if(state.currentRoom===target) return;
+  // Cancel any in-progress furniture/resident placement on room change
+  _placingFurnitureId=null;_placingResidentId=null;_movingFurnitureId=null;
+  _placeCursorX=null;_placeCursorY=null;
+  const overlay=document.getElementById('home-place-overlay'); if(overlay) overlay.style.display='none';
+  const hint=document.getElementById('home-room-hint'); if(hint) hint.style.display='none';
+  // Ensure parking object exists
+  if(!state.rooms) state.rooms={kitchen:{furniture:[],residents:[]}};
+  if(!state.rooms.kitchen) state.rooms.kitchen={furniture:[],residents:[]};
+
+  if(state.currentRoom==='living'){
+    // Park living → activate kitchen
+    state.rooms.living={furniture:state.placedFurniture||[], residents:state.placedResidents||[]};
+    state.placedFurniture=Array.isArray(state.rooms.kitchen.furniture)?state.rooms.kitchen.furniture:[];
+    state.placedResidents=Array.isArray(state.rooms.kitchen.residents)?state.rooms.kitchen.residents:[];
+  } else {
+    // Park kitchen → activate living
+    state.rooms.kitchen={furniture:state.placedFurniture||[], residents:state.placedResidents||[]};
+    const lr=state.rooms.living||{furniture:[],residents:[]};
+    state.placedFurniture=Array.isArray(lr.furniture)?lr.furniture:[];
+    state.placedResidents=Array.isArray(lr.residents)?lr.residents:[];
+  }
+  state.currentRoom=target;
+  // Reset resident AI so squishies start fresh in the room they're now in
+  Object.keys(_resAI).forEach(k=>delete _resAI[k]);
+  // Reset squirrel to a neutral spot
+  _sqHomeX=0.25;_sqHomeY=0.68;_sqHomeTargetX=0.25;_sqHomeTargetY=0.68;_sqHomeMoving=false;_sqHomeTapFade=0;
+  saveState();
+  // Update the topbar title and rebuild the shop/residents tab for context
+  _updateRoomChrome();
+  const content=document.getElementById('home-tab-content');
+  if(content){ switchHomeTab('shop'); }
+  // Redraw the room canvas fresh
+  drawHomeRoom();
+  showToast(target==='kitchen'?'🍳 Welcome to the Kitchen!':'🏡 Back home!');
+}
+
+function _updateRoomChrome(){
+  const titleEl=document.getElementById('home-room-title');
+  if(titleEl) titleEl.textContent = state.currentRoom==='kitchen' ? '🍳 Cozy Kitchen' : '🏡 Home Sweet Home';
+}
+
+// ── KITCHEN BACKGROUND ──────────────────────────────────────────
+// Painted to match the treehouse living room (same honey walls + dark floor)
+// so the two rooms read as one continuous home. Adds a tiled backsplash, a
+// counter with sink + stove, a fridge, hanging utensils and a window.
+function _paintKitchen(ctx,W,H,t){
+  // ── Wall — same honey-wood as living room (continuity) ──
+  const wallGrad=ctx.createLinearGradient(0,0,0,H*0.68);
+  wallGrad.addColorStop(0,'#e8a86a');wallGrad.addColorStop(0.5,'#d4935a');wallGrad.addColorStop(1,'#c07840');
+  ctx.fillStyle=wallGrad;ctx.fillRect(0,0,W,H*0.68);
+  // Plank lines
+  ctx.save();ctx.strokeStyle='rgba(0,0,0,0.09)';ctx.lineWidth=1.5;
+  const plankH=H*0.68/7;
+  for(let p=1;p<7;p++){ctx.beginPath();ctx.moveTo(0,plankH*p);ctx.lineTo(W,plankH*p);ctx.stroke();}
+  ctx.restore();
+  // Warm ceiling light
+  const ceilLight=ctx.createLinearGradient(0,0,0,H*0.25);
+  ceilLight.addColorStop(0,'rgba(255,220,150,0.20)');ceilLight.addColorStop(1,'rgba(255,220,150,0)');
+  ctx.fillStyle=ceilLight;ctx.fillRect(0,0,W,H*0.25);
+
+  // ── Tiled backsplash band behind the counter ──
+  const tileTop=H*0.30, tileBot=H*0.50, tileH=(tileBot-tileTop)/3, tileW=W*0.07;
+  ctx.save();
+  for(let row=0;row<3;row++){
+    const yy=tileTop+row*tileH;
+    const off=(row%2)*(tileW*0.5);
+    for(let x=-tileW; x<W+tileW; x+=tileW){
+      const tx=x+off;
+      const g=ctx.createLinearGradient(tx,yy,tx,yy+tileH);
+      g.addColorStop(0,'#f5ece0');g.addColorStop(1,'#e6d8c5');
+      ctx.fillStyle=g;
+      ctx.fillRect(tx+1,yy+1,tileW-2,tileH-2);
+      // tiny tile shine
+      ctx.fillStyle='rgba(255,255,255,0.25)';
+      ctx.fillRect(tx+2,yy+2,tileW*0.4,tileH*0.18);
+    }
+  }
+  // grout shadow line under backsplash
+  ctx.fillStyle='rgba(0,0,0,0.10)';ctx.fillRect(0,tileBot-2,W,3);
+  ctx.restore();
+
+  // ── Window (right side) — same outside view as living room ──
+  const ww=Math.min(W*0.20,H*0.46), wh=Math.min(H*0.40,W*0.28);
+  const wx=W-ww-W*0.05, wy=H*0.05;
+  ctx.fillStyle='rgba(0,0,0,0.18)';ctx.fillRect(wx-4,wy-4,ww+8,wh+8);
+  const skyG=ctx.createLinearGradient(wx,wy,wx,wy+wh);
+  skyG.addColorStop(0,'#6dc8f2');skyG.addColorStop(0.6,'#a8e0f8');skyG.addColorStop(1,'#a8d888');
+  ctx.fillStyle=skyG;ctx.fillRect(wx,wy,ww,wh);
+  ctx.save();ctx.beginPath();ctx.rect(wx,wy,ww,wh);ctx.clip();
+  ctx.fillStyle='#5ab85c';ctx.fillRect(wx,wy+wh*0.78,ww,wh*0.22);
+  ctx.fillStyle='#1b5e20';ctx.beginPath();ctx.arc(wx+ww*0.62,wy+wh*0.62,ww*0.18,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#2e7d32';ctx.beginPath();ctx.arc(wx+ww*0.62,wy+wh*0.55,ww*0.13,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#5d3a1a';ctx.fillRect(wx+ww*0.58,wy+wh*0.66,ww*0.07,wh*0.32);
+  ctx.fillStyle='rgba(255,220,80,0.9)';ctx.beginPath();ctx.arc(wx+ww*0.2,wy+wh*0.16,ww*0.08,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle='#7a4a18';ctx.lineWidth=6;ctx.strokeRect(wx,wy,ww,wh);
+  ctx.strokeStyle='rgba(100,60,20,0.4)';ctx.lineWidth=2.5;
+  ctx.beginPath();ctx.moveTo(wx+ww*0.5,wy);ctx.lineTo(wx+ww*0.5,wy+wh);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(wx,wy+wh*0.5);ctx.lineTo(wx+ww,wy+wh*0.5);ctx.stroke();
+
+  // ── Floor — same dark wood as living room ──
+  const floorGrad=ctx.createLinearGradient(0,H*0.66,0,H);
+  floorGrad.addColorStop(0,'#9b6a2a');floorGrad.addColorStop(0.4,'#7d5020');floorGrad.addColorStop(1,'#5d3a10');
+  ctx.fillStyle=floorGrad;ctx.fillRect(0,H*0.66,W,H*0.34);
+  ctx.save();ctx.strokeStyle='rgba(0,0,0,0.18)';ctx.lineWidth=1.5;
+  for(let fp=1;fp<5;fp++){ctx.beginPath();ctx.moveTo(0,H*(0.66+fp*0.07));ctx.lineTo(W,H*(0.66+fp*0.07));ctx.stroke();}
+  ctx.strokeStyle='rgba(0,0,0,0.10)';ctx.lineWidth=1;
+  [0.15,0.35,0.55,0.75,0.92].forEach(x=>{ctx.beginPath();ctx.moveTo(W*x,H*0.66);ctx.lineTo(W*x,H);ctx.stroke();});
+  ctx.restore();
+  ctx.fillStyle='#c8903a';ctx.fillRect(0,H*0.655,W,H*0.022);
+  ctx.fillStyle='rgba(0,0,0,0.15)';ctx.fillRect(0,H*0.665,W,H*0.012);
+
+  // ── Counter with sink + stovetop (left & center) ──
+  const ctrTop=H*0.50, ctrH=H*0.16, ctrLeft=W*0.04, ctrRight=W*0.66;
+  // Cabinet body
+  const cabG=ctx.createLinearGradient(0,ctrTop,0,ctrTop+ctrH);
+  cabG.addColorStop(0,'#b06a30');cabG.addColorStop(1,'#8a4f1f');
+  ctx.fillStyle=cabG;ctx.fillRect(ctrLeft,ctrTop+ctrH*0.28,ctrRight-ctrLeft,ctrH*0.72);
+  // Cabinet doors
+  ctx.strokeStyle='rgba(0,0,0,0.18)';ctx.lineWidth=1.5;
+  const doorW=(ctrRight-ctrLeft)/4;
+  for(let d=0;d<4;d++){
+    const dx=ctrLeft+d*doorW;
+    ctx.strokeRect(dx+3,ctrTop+ctrH*0.32,doorW-6,ctrH*0.62);
+    // handle
+    ctx.fillStyle='#ffd890';ctx.beginPath();ctx.arc(dx+doorW-10,ctrTop+ctrH*0.62,2.5,0,Math.PI*2);ctx.fill();
+  }
+  // Countertop slab
+  const topG=ctx.createLinearGradient(0,ctrTop,0,ctrTop+ctrH*0.28);
+  topG.addColorStop(0,'#efe6d6');topG.addColorStop(1,'#d8c8b0');
+  ctx.fillStyle=topG;ctx.fillRect(ctrLeft-3,ctrTop,ctrRight-ctrLeft+6,ctrH*0.28);
+  ctx.fillStyle='rgba(255,255,255,0.25)';ctx.fillRect(ctrLeft-3,ctrTop,ctrRight-ctrLeft+6,ctrH*0.06);
+
+  // Sink (left section)
+  const sinkX=ctrLeft+W*0.04, sinkY=ctrTop+ctrH*0.06, sinkW=W*0.12, sinkH=ctrH*0.16;
+  ctx.fillStyle='#b8bcc0';ctx.beginPath();ctx.roundRect(sinkX,sinkY,sinkW,sinkH,4);ctx.fill();
+  ctx.fillStyle='#8a8e92';ctx.beginPath();ctx.roundRect(sinkX+sinkW*0.12,sinkY+sinkH*0.22,sinkW*0.76,sinkH*0.6,3);ctx.fill();
+  // Faucet
+  ctx.strokeStyle='#c0c4c8';ctx.lineWidth=3;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(sinkX+sinkW*0.5,sinkY);ctx.lineTo(sinkX+sinkW*0.5,sinkY-ctrH*0.16);
+  ctx.quadraticCurveTo(sinkX+sinkW*0.5,sinkY-ctrH*0.22,sinkX+sinkW*0.62,sinkY-ctrH*0.20);ctx.stroke();
+
+  // Stovetop (center section) with 4 animated burners
+  const stoveX=ctrLeft+W*0.30, stoveY=ctrTop+ctrH*0.05, stoveW=W*0.20, stoveH=ctrH*0.18;
+  ctx.fillStyle='#2a2a30';ctx.beginPath();ctx.roundRect(stoveX,stoveY,stoveW,stoveH,4);ctx.fill();
+  const burners=[[0.28,0.34],[0.72,0.34],[0.28,0.7],[0.72,0.7]];
+  burners.forEach(([bx,by],i)=>{
+    const cx=stoveX+stoveW*bx, cy=stoveY+stoveH*by, br=Math.min(stoveW,stoveH)*0.16;
+    ctx.strokeStyle='#555';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,br,0,Math.PI*2);ctx.stroke();
+    // front-left burner glows + flickers
+    if(i===0){
+      const flick=0.5+0.5*Math.abs(Math.sin(t*0.12+i));
+      const g=ctx.createRadialGradient(cx,cy,1,cx,cy,br);
+      g.addColorStop(0,`rgba(255,140,40,${0.7*flick})`);g.addColorStop(1,'rgba(255,80,0,0)');
+      ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,br,0,Math.PI*2);ctx.fill();
+    }
+  });
+
+  // ── Fridge (right of counter) ──
+  const frX=W*0.70, frY=H*0.34, frW=W*0.13, frH=H*0.32;
+  const frG=ctx.createLinearGradient(frX,0,frX+frW,0);
+  frG.addColorStop(0,'#e8eef2');frG.addColorStop(0.5,'#f5f9fb');frG.addColorStop(1,'#d8e0e6');
+  ctx.fillStyle=frG;ctx.beginPath();ctx.roundRect(frX,frY,frW,frH,6);ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.12)';ctx.lineWidth=1.5;ctx.beginPath();ctx.roundRect(frX,frY,frW,frH,6);ctx.stroke();
+  // freezer divider
+  ctx.beginPath();ctx.moveTo(frX,frY+frH*0.34);ctx.lineTo(frX+frW,frY+frH*0.34);ctx.stroke();
+  // handles
+  ctx.fillStyle='#aab2b8';
+  ctx.beginPath();ctx.roundRect(frX+frW*0.82,frY+frH*0.08,frW*0.06,frH*0.18,3);ctx.fill();
+  ctx.beginPath();ctx.roundRect(frX+frW*0.82,frY+frH*0.42,frW*0.06,frH*0.40,3);ctx.fill();
+  // little magnet hearts
+  ctx.fillStyle='#FF8FAB';ctx.font=`${frW*0.18}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('❤',frX+frW*0.3,frY+frH*0.5);
+  ctx.fillStyle='#FFD166';ctx.fillText('★',frX+frW*0.5,frY+frH*0.62);
+
+  // ── Hanging utensils on the wall (left) ──
+  ctx.save();
+  const rackY=H*0.20, rackX=W*0.06, rackW=W*0.22;
+  ctx.strokeStyle='#6d4818';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(rackX,rackY);ctx.lineTo(rackX+rackW,rackY);ctx.stroke();
+  ['🍳','🥄','🔪','🥢'].forEach((u,i)=>{
+    const ux=rackX+rackW*(0.15+i*0.24);
+    ctx.strokeStyle='rgba(80,50,20,0.5)';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(ux,rackY);ctx.lineTo(ux,rackY+H*0.02);ctx.stroke();
+    ctx.font=`${H*0.05}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(u,ux,rackY+H*0.05);
+  });
+  ctx.restore();
+
+  // ── Warm lamp glow (right, over counter) ──
+  const lampGlow=ctx.createRadialGradient(W*0.5,H*0.30,5,W*0.5,H*0.30,W*0.4);
+  lampGlow.addColorStop(0,'rgba(255,200,100,0.15)');lampGlow.addColorStop(1,'rgba(255,200,100,0)');
+  ctx.fillStyle=lampGlow;ctx.fillRect(0,0,W,H*0.6);
+
+  // ── "Back to Living Room" door plaque (top-left) — tappable ──
+  ctx.save();
+  ctx.fillStyle='rgba(80,40,10,0.55)';ctx.beginPath();ctx.roundRect(W*0.03,H*0.04,W*0.26,H*0.09,5);ctx.fill();
+  ctx.strokeStyle='rgba(200,150,70,0.4)';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(W*0.03,H*0.04,W*0.26,H*0.09,5);ctx.stroke();
+  ctx.fillStyle='#ffd890';ctx.font=`bold ${Math.min(H*0.026,13)}px Nunito,sans-serif`;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('🏡 Back to Living Room',W*0.16,H*0.085);
+  ctx.restore();
+}
+
 function buildHome(){
   // Update coin display
   document.getElementById('home-coin-count').textContent = state.coins||0;
+  _updateRoomChrome();
   // Draw the room
   drawHomeRoom();
   // Default to shop tab
@@ -4304,6 +4534,14 @@ function buildHome(){
       // Priority 1: commit furniture/resident placement
       if(_placingFurnitureId||_placingResidentId){
         _commitPlacement(nx,ny);
+        return;
+      }
+
+      // Priority 1.5: door plaque (top-left) switches rooms
+      // Living room → "🍳 Enter Kitchen"; Kitchen → "🏡 Back to Living Room".
+      // Hit box matches the plaque rect drawn in _paintRoom/_paintKitchen.
+      if(nx>=0.03 && nx<=0.31 && ny>=0.04 && ny<=0.14){
+        switchRoom(state.currentRoom==='kitchen' ? 'living' : 'kitchen');
         return;
       }
 
@@ -4490,6 +4728,9 @@ function drawHomeRoom(){
 }
 
 function _paintRoom(ctx,W,H,t){
+  if(state.currentRoom==='kitchen'){
+    _paintKitchen(ctx,W,H,t);
+  } else {
   // ── Background wall — warm honey-wood planks ──
   const wallGrad=ctx.createLinearGradient(0,0,0,H*0.68);
   wallGrad.addColorStop(0,'#e8a86a');wallGrad.addColorStop(0.5,'#d4935a');wallGrad.addColorStop(1,'#c07840');
@@ -4587,6 +4828,8 @@ function _paintRoom(ctx,W,H,t){
   ctx.beginPath();ctx.arc(wx-W*0.072,wy-H*0.017,H*0.014,0,Math.PI*2);ctx.fill();
   ctx.beginPath();ctx.arc(wx+ww+W*0.072,wy-H*0.017,H*0.014,0,Math.PI*2);ctx.fill();
   ctx.restore();
+
+  } // end living-room background branch
 
   // ── Placed furniture ──
   _guardedDraw(ctx, function(){ _drawFurnitureInRoom(ctx,W,H,t); });
@@ -4715,7 +4958,7 @@ function _paintRoom(ctx,W,H,t){
   ctx.strokeStyle='rgba(200,150,70,0.35)';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(W*0.03,H*0.04,W*0.24,H*0.09,5);ctx.stroke();
   ctx.fillStyle='#ffd890';ctx.font=`bold ${Math.min(H*0.026,13)}px Nunito,sans-serif`;
   ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText('🍳 Kitchen · Coming Soon',W*0.15,H*0.085);
+  ctx.fillText('🍳 Enter Kitchen',W*0.15,H*0.085);
   ctx.restore();
 }
 
