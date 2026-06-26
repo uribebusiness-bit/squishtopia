@@ -896,7 +896,13 @@ function addXP(amount, reason){
   const infoBefore = getLevelInfo(xpBefore);
   const infoAfter  = getLevelInfo(state.xp);
   if(infoAfter.cur.lvl > infoBefore.cur.lvl){
-    _triggerLevelUp(infoAfter.cur);
+    // Avoid stacking on top of an active rarity reveal (rare+ collections).
+    // If a rarity reaction is on screen, wait for it to clear first.
+    if(document.querySelector('.rarity-reaction')){
+      setTimeout(()=>_triggerLevelUp(infoAfter.cur), 2900);
+    } else {
+      _triggerLevelUp(infoAfter.cur);
+    }
   }
   saveState();
 }
@@ -3802,14 +3808,15 @@ function weightedRandomSQ(zone){
   const eventBoosts=_getEventBoosts();
   const zoneBias=zone?ZONE_FAMILY_BIAS[zone]:null;
   // Pity / milestone net: if the player has collected every NON-mythic squishy,
-  // the only ones left are mythics — heavily boost the uncollected mythics so a
-  // dedicated completionist is reliably rewarded instead of luck-walled forever.
+  // the only ones left are mythics — gently boost the uncollected mythics (6x) so a
+  // dedicated completionist is reliably rewarded over time (~1 mythic per ~24 pods)
+  // instead of luck-walled forever, while keeping mythics feeling genuinely rare.
   let mythicPity=1;
   try{
     const collected=state&&Array.isArray(state.collected)?state.collected:[];
     const nonMythic=SQUISHIES.filter(s=>s.rarity!=='mythic'&&s.rarity!=='pro'&&s.rarity!=='free');
     const haveAllNonMythic=nonMythic.every(s=>collected.includes(s.id));
-    if(haveAllNonMythic) mythicPity=40; // huge boost — next pods will yield the mythics
+    if(haveAllNonMythic) mythicPity=6; // gentle boost — completionists are reliably
   }catch(e){}
   let pool=[],total=0;
   SQUISHIES.forEach(sq=>{
@@ -7750,13 +7757,17 @@ function triggerRarityReaction(sq){
   } else if(r==='epic'){
     // Teal lightning crack
     wrap.innerHTML=`<div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 60%,rgba(0,188,212,0.4),rgba(0,188,212,0) 70%);animation:rareFade 1.6s ease forwards"></div>
+    <div style="position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px">
     <svg width="100" height="100" viewBox="0 0 100 100" style="animation:rareFade 1.6s ease forwards;filter:drop-shadow(0 0 22px rgba(0,200,220,0.9))"><polygon points="58,6 30,52 48,52 38,94 74,40 54,40 66,6" fill="#26C6DA"/><polygon points="58,6 30,52 48,52 38,94 74,40 54,40 66,6" fill="none" stroke="#E0F7FA" stroke-width="1.5" stroke-linejoin="round"/><polygon points="58,6 44,29 58,30 52,52 64,28 56,28 62,12" fill="#B2EBF2" opacity="0.8"/></svg>
-    <div style="position:absolute;font-size:16px;font-weight:900;color:#00BCD4;letter-spacing:3px;top:35%;animation:rareFade 1.6s 0.2s ease both;text-shadow:0 0 20px rgba(0,188,212,0.8)">EPIC FIND!</div>`;
+    <div style="font-size:16px;font-weight:900;color:#00BCD4;letter-spacing:3px;animation:rareFade 1.6s 0.2s ease both;text-shadow:0 0 20px rgba(0,188,212,0.8)">EPIC FIND!</div>
+    </div>`;
   } else if(r==='legendary'){
     // Gold screen flash + crown shower
     wrap.innerHTML=`<div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(255,193,7,0.55),rgba(255,215,0,0.2) 60%,rgba(255,215,0,0) 100%);animation:rareFade 2s ease forwards"></div>
+    <div style="position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px">
     <svg width="104" height="104" viewBox="0 0 100 100" style="animation:mythicPulse 2s ease forwards;filter:drop-shadow(0 0 26px rgba(255,200,0,0.9))"><path d="M16,40 L30,60 L42,32 L50,64 L58,32 L70,60 L84,40 L80,78 L20,78 Z" fill="#FFC107"/><path d="M16,40 L30,60 L42,32 L50,64 L58,32 L70,60 L84,40 L80,78 L20,78 Z" fill="none" stroke="#FFE082" stroke-width="1.5" stroke-linejoin="round"/><rect x="20" y="78" width="60" height="9" rx="2" fill="#FFB300"/><circle cx="16" cy="40" r="5" fill="#FFD54F"/><circle cx="84" cy="40" r="5" fill="#FFD54F"/><circle cx="50" cy="22" r="5" fill="#FFD54F"/><circle cx="40" cy="68" r="3" fill="#E53935"/><circle cx="60" cy="68" r="3" fill="#2196F3"/><circle cx="50" cy="70" r="3" fill="#43A047"/><rect x="26" y="80" width="6" height="5" fill="#FFF59D" opacity="0.8"/></svg>
-    <div style="position:absolute;font-size:18px;font-weight:900;color:#FFD700;letter-spacing:3px;top:32%;animation:rareFade 2s 0.15s ease both;text-shadow:0 0 24px rgba(255,193,7,0.9)">LEGENDARY!</div>`;
+    <div style="font-size:18px;font-weight:900;color:#FFD700;letter-spacing:3px;animation:rareFade 2s 0.15s ease both;text-shadow:0 0 24px rgba(255,193,7,0.9)">LEGENDARY!</div>
+    </div>`;
     // Float-up gold coins
     for(let i=0;i<10;i++){
       const coin=document.createElement('div');
@@ -7770,6 +7781,7 @@ function triggerRarityReaction(sq){
   } else if(r==='mythic'){
     // Full purple galaxy explosion
     wrap.innerHTML=`<div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(149,117,205,0.7),rgba(103,58,183,0.45) 50%,rgba(74,20,140,0) 100%);animation:mythicPulse 2.5s ease forwards"></div>
+    <div style="position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
     <svg width="160" height="160" viewBox="0 0 200 200" style="animation:mythicPulse 2.5s ease forwards;filter:drop-shadow(0 0 30px rgba(180,0,255,0.85))">
       <defs>
         <radialGradient id="mcore" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#FFFFFF"/><stop offset="30%" stop-color="#FFE8FF"/><stop offset="70%" stop-color="#E040FB"/><stop offset="100%" stop-color="#7B1FA2" stop-opacity="0"/></radialGradient>
@@ -7786,8 +7798,9 @@ function triggerRarityReaction(sq){
       <circle cx="100" cy="100" r="34" fill="url(#mcore)" style="transform-origin:100px 100px;animation:corePulse 2.4s ease-in-out infinite"/>
       <g style="animation:galaxyTwinkle 1.8s ease-in-out infinite"><circle cx="46" cy="56" r="1.4" fill="#fff"/><circle cx="160" cy="64" r="1.2" fill="#fff"/><circle cx="40" cy="140" r="1.3" fill="#fff"/><circle cx="166" cy="148" r="1.4" fill="#fff"/><circle cx="100" cy="30" r="1.2" fill="#fff"/></g>
     </svg>
-    <div style="position:absolute;font-size:20px;font-weight:900;color:#E040FB;letter-spacing:4px;top:30%;animation:mythicPulse 2.5s 0.1s ease both;text-shadow:0 0 30px rgba(224,64,251,1)">✦ MYTHIC ✦</div>
-    <div style="position:absolute;font-size:14px;font-weight:800;color:rgba(255,200,255,0.9);letter-spacing:2px;top:42%;animation:rareFade 2.5s 0.3s ease both">UNBELIEVABLY RARE</div>`;
+    <div style="font-size:20px;font-weight:900;color:#E040FB;letter-spacing:4px;animation:mythicPulse 2.5s 0.1s ease both;text-shadow:0 0 30px rgba(224,64,251,1)">✦ MYTHIC ✦</div>
+    <div style="font-size:14px;font-weight:800;color:rgba(255,200,255,0.9);letter-spacing:2px;animation:rareFade 2.5s 0.3s ease both">UNBELIEVABLY RARE</div>
+    </div>`;
     // Star shower
     for(let i=0;i<18;i++){
       const star=document.createElement('div');
