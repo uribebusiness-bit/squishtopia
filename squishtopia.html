@@ -317,6 +317,9 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
 .rarity-reaction{position:fixed;inset:0;pointer-events:none;z-index:450;display:flex;align-items:center;justify-content:center}
 @keyframes rareFade{0%{opacity:0;transform:scale(0.8)}15%{opacity:1;transform:scale(1.05)}80%{opacity:1}100%{opacity:0;transform:scale(1.1)}}
 @keyframes mythicPulse{0%{opacity:0;transform:scale(0.5)}20%{opacity:1;transform:scale(1.08)}70%{opacity:1}100%{opacity:0;transform:scale(1.15)}}
+@keyframes galaxySpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes corePulse{0%,100%{transform:scale(1);opacity:0.95}50%{transform:scale(1.14);opacity:1}}
+@keyframes galaxyTwinkle{0%,100%{opacity:0.3}50%{opacity:1}}
 @keyframes legendaryShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
 @keyframes discCardIn{0%{opacity:0;transform:scale(0.6) translateY(30px)}55%{opacity:1;transform:scale(1.04) translateY(0)}70%{transform:scale(0.99)}100%{opacity:1;transform:scale(1) translateY(0)}}
 @keyframes discCardOut{0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(0.92) translateY(-10px)}}
@@ -392,7 +395,7 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
   <canvas id="park-ov" style="position:absolute;top:0;left:0;right:0;bottom:var(--nav-h)"></canvas>
   <div id="park-error" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,0,0,0.9);color:white;padding:20px;border-radius:8px;font-size:12px;max-width:80%;word-break:break-all;z-index:999"></div>
   <div id="explore-hud" style="position:absolute;top:10px;left:10px;background:rgba(255,255,255,.75);backdrop-filter:blur(8px);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:800;color:#555;z-index:60;pointer-events:auto;display:flex;align-items:center;gap:8px"><span id="explore-pct">0% explored</span></div>
-  <div id="park-coin-hud" style="position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(255,220,80,0.85);backdrop-filter:blur(8px);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:900;color:#7a4a00;z-index:60;display:flex;align-items:center;gap:4px;pointer-events:none">🪙 <span id="park-coin-count">0</span></div>
+  <div id="park-coin-hud" style="position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(255,220,80,0.85);backdrop-filter:blur(8px);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:900;color:#7a4a00;z-index:60;display:flex;align-items:center;gap:4px;pointer-events:none"><svg width="16" height="16" viewBox="0 0 100 100" style="vertical-align:middle;display:inline-block"><ellipse cx="50" cy="54" rx="38" ry="38" fill="#C8860D"/><ellipse cx="50" cy="48" rx="38" ry="38" fill="#FFC83D"/><ellipse cx="50" cy="48" rx="30" ry="30" fill="#F5A623"/><ellipse cx="50" cy="48" rx="30" ry="30" fill="none" stroke="#FFE08A" stroke-width="2"/><text x="50" y="60" text-anchor="middle" font-size="34" font-weight="900" fill="#B5710A" font-family="Nunito,sans-serif">N</text><ellipse cx="40" cy="36" rx="7" ry="4" fill="#FFF3C4" opacity="0.8" transform="rotate(-30 40 36)"/></svg> <span id="park-coin-count">0</span></div>
   <div id="park-event-banner" onclick="showScreen('events')" style="display:none;position:absolute;top:46px;left:10px;background:rgba(255,140,30,0.93);backdrop-filter:blur(8px);border-radius:20px;padding:3px 12px;font-size:10px;font-weight:800;color:white;z-index:60;cursor:pointer;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.15)"></div>
   <canvas id="mini-map" style="position:absolute;top:10px;right:10px;width:110px;height:82px;border-radius:8px;z-index:40;pointer-events:none"></canvas>
   <div id="joystick-wrap" style="position:absolute;bottom:84px;left:24px;width:110px;height:110px;z-index:40;touch-action:none;pointer-events:none"><div id="joy-base" style="position:absolute;inset:0;border-radius:50%;background:rgba(255,255,255,.22);border:2.5px solid rgba(255,255,255,.45);backdrop-filter:blur(4px)"></div><div id="joy-knob" style="position:absolute;width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.75);border:2.5px solid rgba(255,255,255,.9);box-shadow:0 3px 12px rgba(0,0,0,.2);top:50%;left:50%;transform:translate(-50%,-50%)"></div></div>
@@ -487,7 +490,7 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
         <div class="trade-box-title">💰 Duplicate Exchange</div>
         <!-- Trade All bar — shown at top when dupes exist, hidden otherwise -->
         <div id="dupe-trade-bar" style="display:none;background:#FFF3E0;border-radius:14px;padding:10px 14px;margin-bottom:12px;align-items:center;gap:10px">
-          <span style="font-size:22px">🪙</span>
+          <span style="font-size:22px"><svg width="22" height="22" viewBox="0 0 100 100" style="vertical-align:middle"><ellipse cx="50" cy="54" rx="38" ry="38" fill="#C8860D"/><ellipse cx="50" cy="48" rx="38" ry="38" fill="#FFC83D"/><ellipse cx="50" cy="48" rx="30" ry="30" fill="#F5A623"/><ellipse cx="50" cy="48" rx="30" ry="30" fill="none" stroke="#FFE08A" stroke-width="2"/><text x="50" y="60" text-anchor="middle" font-size="34" font-weight="900" fill="#B5710A" font-family="Nunito,sans-serif">N</text><ellipse cx="40" cy="36" rx="7" ry="4" fill="#FFF3C4" opacity="0.8" transform="rotate(-30 40 36)"/></svg></span>
           <div style="flex:1">
             <div style="font-size:13px;font-weight:900;color:#8b4513" id="dupe-trade-total">You'll earn 0 coins</div>
             <div style="font-size:11px;color:#AAA">30% of face value per duplicate</div>
@@ -609,7 +612,7 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
     <button onclick="showScreen('park')" style="background:rgba(255,255,255,0.18);border:none;border-radius:50%;width:38px;height:38px;font-size:18px;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center">←</button>
     <div style="font-size:17px;font-weight:900;color:white;text-shadow:0 1px 4px rgba(0,0,0,0.3)">🏡 Home Sweet Home</div>
     <div id="home-coin-display" style="background:rgba(255,220,80,0.25);border:1.5px solid rgba(255,220,80,0.5);border-radius:20px;padding:5px 12px;display:flex;align-items:center;gap:5px;cursor:pointer" onclick="showScreen('trade')">
-      <span style="font-size:16px">🪙</span>
+      <span style="font-size:16px"><svg width="16" height="16" viewBox="0 0 100 100" style="vertical-align:middle"><ellipse cx="50" cy="54" rx="38" ry="38" fill="#C8860D"/><ellipse cx="50" cy="48" rx="38" ry="38" fill="#FFC83D"/><ellipse cx="50" cy="48" rx="30" ry="30" fill="#F5A623"/><ellipse cx="50" cy="48" rx="30" ry="30" fill="none" stroke="#FFE08A" stroke-width="2"/><text x="50" y="60" text-anchor="middle" font-size="34" font-weight="900" fill="#B5710A" font-family="Nunito,sans-serif">N</text><ellipse cx="40" cy="36" rx="7" ry="4" fill="#FFF3C4" opacity="0.8" transform="rotate(-30 40 36)"/></svg></span>
       <span id="home-coin-count" style="font-size:14px;font-weight:900;color:#ffe066">0</span>
     </div>
   </div>
@@ -6133,7 +6136,7 @@ function _buildShopTab(el){
   const RARITY_COLORS={free:'#4CAF50',common:'#888',rare:'#1565C0',pro:'#7B1FA2'};
 
   let html=`<div style="padding:12px 14px 4px;display:flex;align-items:center;gap:8px;background:#FFF3E0;border-bottom:1px solid #F0E0C8">
-    <span style="font-size:22px">🪙</span>
+    <span style="font-size:22px">${coinSVG(22)}</span>
     <div>
       <div style="font-size:13px;font-weight:900;color:#8b4513">Your Coins: ${coins}</div>
       <div style="font-size:11px;color:#AAA;font-weight:600">Collect squishies to earn more</div>
@@ -6357,7 +6360,7 @@ function _showTradeDupes(){
       <button onclick="document.getElementById('trade-dupes-overlay').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888">✕</button>
     </div>
     <div style="background:#FFF8F0;border-radius:14px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
-      <span style="font-size:28px">🪙</span>
+      <span style="font-size:28px">${coinSVG(28)}</span>
       <div>
         <div style="font-size:13px;font-weight:900;color:#8b4513">You'll earn ${totalCoins} coins</div>
         <div style="font-size:11px;color:#AAA">Duplicates trade at 30% face value</div>
@@ -7728,6 +7731,11 @@ function doCollect(){
   }, isNew?1600:1200);
 }
 
+// ── Drawn coin (Nimbets currency) — replaces 🪙 in prominent HUD/reward spots ──
+// Inline 🪙 in text strings (toasts, prices, daily-gift icons) intentionally kept
+// for text-baseline alignment. s = pixel size.
+function coinSVG(s){s=s||22;return `<svg width="${s}" height="${s}" viewBox="0 0 100 100" style="vertical-align:middle;display:inline-block;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.22))"><ellipse cx="50" cy="54" rx="38" ry="38" fill="#C8860D"/><ellipse cx="50" cy="48" rx="38" ry="38" fill="#FFC83D"/><ellipse cx="50" cy="48" rx="30" ry="30" fill="#F5A623"/><ellipse cx="50" cy="48" rx="30" ry="30" fill="none" stroke="#FFE08A" stroke-width="2"/><text x="50" y="60" text-anchor="middle" font-size="34" font-weight="900" fill="#B5710A" font-family="Nunito,sans-serif">N</text><ellipse cx="40" cy="36" rx="7" ry="4" fill="#FFF3C4" opacity="0.8" transform="rotate(-30 40 36)"/></svg>`;}
+
 function triggerRarityReaction(sq){
   const r=sq.rarity;
   if(r==='common'||r==='uncommon') return; // no reaction for low rarities
@@ -7738,16 +7746,16 @@ function triggerRarityReaction(sq){
   if(r==='rare'){
     // Cool blue shimmer ripple
     wrap.innerHTML=`<div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 60%,rgba(33,150,243,0.35),rgba(33,150,243,0) 70%);animation:rareFade 1.4s ease forwards"></div>
-    <div style="font-size:52px;animation:rareFade 1.4s ease forwards;filter:drop-shadow(0 0 20px rgba(33,150,243,0.8))">💎</div>`;
+    <svg width="92" height="92" viewBox="0 0 100 100" style="animation:rareFade 1.4s ease forwards;filter:drop-shadow(0 0 18px rgba(33,150,243,0.85))"><polygon points="50,8 78,34 50,92 22,34" fill="#42A5F5"/><polygon points="50,8 78,34 50,42 22,34" fill="#90CAF9"/><polygon points="50,8 64,34 50,42 36,34" fill="#E3F2FD"/><polygon points="22,34 50,42 50,92" fill="#1E88E5"/><polygon points="78,34 50,42 50,92" fill="#1565C0"/><polygon points="36,34 50,42 50,62 28,40" fill="#64B5F6" opacity="0.7"/><polygon points="64,34 50,42 50,62 72,40" fill="#2196F3" opacity="0.7"/><line x1="50" y1="42" x2="50" y2="92" stroke="#BBDEFB" stroke-width="0.6" opacity="0.6"/><circle cx="42" cy="22" r="2.4" fill="#fff" opacity="0.9"/></svg>`;
   } else if(r==='epic'){
     // Teal lightning crack
     wrap.innerHTML=`<div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 60%,rgba(0,188,212,0.4),rgba(0,188,212,0) 70%);animation:rareFade 1.6s ease forwards"></div>
-    <div style="font-size:64px;animation:rareFade 1.6s ease forwards;filter:drop-shadow(0 0 24px rgba(0,188,212,0.9))">⚡</div>
+    <svg width="100" height="100" viewBox="0 0 100 100" style="animation:rareFade 1.6s ease forwards;filter:drop-shadow(0 0 22px rgba(0,200,220,0.9))"><polygon points="58,6 30,52 48,52 38,94 74,40 54,40 66,6" fill="#26C6DA"/><polygon points="58,6 30,52 48,52 38,94 74,40 54,40 66,6" fill="none" stroke="#E0F7FA" stroke-width="1.5" stroke-linejoin="round"/><polygon points="58,6 44,29 58,30 52,52 64,28 56,28 62,12" fill="#B2EBF2" opacity="0.8"/></svg>
     <div style="position:absolute;font-size:16px;font-weight:900;color:#00BCD4;letter-spacing:3px;top:35%;animation:rareFade 1.6s 0.2s ease both;text-shadow:0 0 20px rgba(0,188,212,0.8)">EPIC FIND!</div>`;
   } else if(r==='legendary'){
     // Gold screen flash + crown shower
     wrap.innerHTML=`<div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(255,193,7,0.55),rgba(255,215,0,0.2) 60%,rgba(255,215,0,0) 100%);animation:rareFade 2s ease forwards"></div>
-    <div style="font-size:72px;animation:mythicPulse 2s ease forwards;filter:drop-shadow(0 0 30px rgba(255,215,0,1))">👑</div>
+    <svg width="104" height="104" viewBox="0 0 100 100" style="animation:mythicPulse 2s ease forwards;filter:drop-shadow(0 0 26px rgba(255,200,0,0.9))"><path d="M16,40 L30,60 L42,32 L50,64 L58,32 L70,60 L84,40 L80,78 L20,78 Z" fill="#FFC107"/><path d="M16,40 L30,60 L42,32 L50,64 L58,32 L70,60 L84,40 L80,78 L20,78 Z" fill="none" stroke="#FFE082" stroke-width="1.5" stroke-linejoin="round"/><rect x="20" y="78" width="60" height="9" rx="2" fill="#FFB300"/><circle cx="16" cy="40" r="5" fill="#FFD54F"/><circle cx="84" cy="40" r="5" fill="#FFD54F"/><circle cx="50" cy="22" r="5" fill="#FFD54F"/><circle cx="40" cy="68" r="3" fill="#E53935"/><circle cx="60" cy="68" r="3" fill="#2196F3"/><circle cx="50" cy="70" r="3" fill="#43A047"/><rect x="26" y="80" width="6" height="5" fill="#FFF59D" opacity="0.8"/></svg>
     <div style="position:absolute;font-size:18px;font-weight:900;color:#FFD700;letter-spacing:3px;top:32%;animation:rareFade 2s 0.15s ease both;text-shadow:0 0 24px rgba(255,193,7,0.9)">LEGENDARY!</div>`;
     // Float-up gold coins
     for(let i=0;i<10;i++){
@@ -7762,7 +7770,22 @@ function triggerRarityReaction(sq){
   } else if(r==='mythic'){
     // Full purple galaxy explosion
     wrap.innerHTML=`<div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(149,117,205,0.7),rgba(103,58,183,0.45) 50%,rgba(74,20,140,0) 100%);animation:mythicPulse 2.5s ease forwards"></div>
-    <div style="font-size:80px;animation:mythicPulse 2.5s ease forwards;filter:drop-shadow(0 0 40px rgba(180,0,255,1))">🌌</div>
+    <svg width="160" height="160" viewBox="0 0 200 200" style="animation:mythicPulse 2.5s ease forwards;filter:drop-shadow(0 0 30px rgba(180,0,255,0.85))">
+      <defs>
+        <radialGradient id="mcore" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#FFFFFF"/><stop offset="30%" stop-color="#FFE8FF"/><stop offset="70%" stop-color="#E040FB"/><stop offset="100%" stop-color="#7B1FA2" stop-opacity="0"/></radialGradient>
+        <radialGradient id="mhalo" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#B57BEE" stop-opacity="0.55"/><stop offset="60%" stop-color="#7B1FA2" stop-opacity="0.25"/><stop offset="100%" stop-color="#4A148C" stop-opacity="0"/></radialGradient>
+      </defs>
+      <circle cx="100" cy="100" r="95" fill="url(#mhalo)"/>
+      <g style="transform-origin:100px 100px;animation:galaxySpin 14s linear infinite">
+        <path d="M100,100 C118,86 140,90 150,112 C156,128 146,148 128,150" fill="none" stroke="#CE93D8" stroke-width="3" stroke-linecap="round" opacity="0.55"/>
+        <path d="M100,100 C82,114 60,110 50,88 C44,72 54,52 72,50" fill="none" stroke="#CE93D8" stroke-width="3" stroke-linecap="round" opacity="0.55"/>
+        <path d="M100,100 C112,118 108,142 86,150 C70,156 50,148 48,130" fill="none" stroke="#E1BEE7" stroke-width="2.5" stroke-linecap="round" opacity="0.45"/>
+        <path d="M100,100 C88,82 92,58 114,50 C130,44 150,52 152,70" fill="none" stroke="#E1BEE7" stroke-width="2.5" stroke-linecap="round" opacity="0.45"/>
+        <circle cx="150" cy="112" r="2.2" fill="#FFFFFF"/><circle cx="128" cy="150" r="1.8" fill="#F3E5F5"/><circle cx="50" cy="88" r="2.2" fill="#FFFFFF"/><circle cx="72" cy="50" r="1.8" fill="#F3E5F5"/><circle cx="86" cy="150" r="1.6" fill="#E040FB"/><circle cx="114" cy="50" r="1.6" fill="#E040FB"/><circle cx="140" cy="92" r="1.4" fill="#FFFFFF"/><circle cx="60" cy="110" r="1.4" fill="#FFFFFF"/>
+      </g>
+      <circle cx="100" cy="100" r="34" fill="url(#mcore)" style="transform-origin:100px 100px;animation:corePulse 2.4s ease-in-out infinite"/>
+      <g style="animation:galaxyTwinkle 1.8s ease-in-out infinite"><circle cx="46" cy="56" r="1.4" fill="#fff"/><circle cx="160" cy="64" r="1.2" fill="#fff"/><circle cx="40" cy="140" r="1.3" fill="#fff"/><circle cx="166" cy="148" r="1.4" fill="#fff"/><circle cx="100" cy="30" r="1.2" fill="#fff"/></g>
+    </svg>
     <div style="position:absolute;font-size:20px;font-weight:900;color:#E040FB;letter-spacing:4px;top:30%;animation:mythicPulse 2.5s 0.1s ease both;text-shadow:0 0 30px rgba(224,64,251,1)">✦ MYTHIC ✦</div>
     <div style="position:absolute;font-size:14px;font-weight:800;color:rgba(255,200,255,0.9);letter-spacing:2px;top:42%;animation:rareFade 2.5s 0.3s ease both">UNBELIEVABLY RARE</div>`;
     // Star shower
@@ -8507,7 +8530,7 @@ function _mysteryReveal(winner){
       @keyframes mr-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
     </style>
     <div id="mr-stage" style="position:relative;width:260px;height:260px;display:flex;align-items:center;justify-content:center">
-      <div id="mr-pod" class="mr-pod">🎁</div>
+      <div id="mr-pod" class="mr-pod"><svg width="118" height="118" viewBox="0 0 100 100" style="filter:drop-shadow(0 4px 8px rgba(0,0,0,0.3))"><rect x="20" y="44" width="60" height="42" rx="5" fill="#AB47BC"/><rect x="20" y="44" width="60" height="42" rx="5" fill="none" stroke="#E1BEE7" stroke-width="1.5"/><rect x="44" y="44" width="12" height="42" fill="#F06292"/><rect x="16" y="32" width="68" height="16" rx="4" fill="#CE93D8"/><rect x="44" y="32" width="12" height="16" fill="#EC407A"/><path d="M50,32 C40,18 22,20 30,32" fill="none" stroke="#F8BBD0" stroke-width="5" stroke-linecap="round"/><path d="M50,32 C60,18 78,20 70,32" fill="none" stroke="#F8BBD0" stroke-width="5" stroke-linecap="round"/><circle cx="50" cy="34" r="4" fill="#FFD54F"/></svg></div>
     </div>
     <div class="mr-tap" id="mr-hint">👆 Tap the gift to open!</div>
   `;
