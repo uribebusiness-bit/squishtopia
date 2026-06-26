@@ -387,6 +387,9 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
     </div>
   </div>
   <button class="welcome-btn" onclick="startGame()">Let's Go! ✨</button>
+  <!-- ▼▼▼ DEV ONLY — REMOVE BEFORE LAUNCH ▼▼▼ -->
+  <button onclick="devJumpToTreehouse()" style="margin-top:14px;background:#E53935;color:white;border:2px dashed #fff;padding:10px 28px;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;letter-spacing:0.5px;box-shadow:0 4px 14px rgba(229,57,53,0.4)">🛠 DEV: Jump to Treehouse</button>
+  <!-- ▲▲▲ DEV ONLY — REMOVE BEFORE LAUNCH ▲▲▲ -->
 </div>
 
 <!-- PARK SCREEN -->
@@ -4377,20 +4380,49 @@ function _paintKitchen(ctx,W,H,t){
   ctx.fillStyle='rgba(0,0,0,0.10)';ctx.fillRect(0,tileBot-2,W,3);
   ctx.restore();
 
-  // ── Window (right side) — same outside view as living room ──
+  // ── Window (right side) — Crystal Pond view (faces the OPPOSITE side of the
+  // treehouse from the living room, so no sun here — a calm dusk pond instead) ──
   const ww=Math.min(W*0.20,H*0.46), wh=Math.min(H*0.40,W*0.28);
   const wx=W-ww-W*0.05, wy=H*0.05;
   ctx.fillStyle='rgba(0,0,0,0.18)';ctx.fillRect(wx-4,wy-4,ww+8,wh+8);
+  // Daytime sky — bright blue (same time of day as the living room, just a
+  // different view: this window faces the pond, not the sunny tree side)
   const skyG=ctx.createLinearGradient(wx,wy,wx,wy+wh);
-  skyG.addColorStop(0,'#6dc8f2');skyG.addColorStop(0.6,'#a8e0f8');skyG.addColorStop(1,'#a8d888');
+  skyG.addColorStop(0,'#7cc4ee');skyG.addColorStop(0.5,'#a6dcf2');skyG.addColorStop(0.7,'#c0e8ec');skyG.addColorStop(1,'#9fd4b0');
   ctx.fillStyle=skyG;ctx.fillRect(wx,wy,ww,wh);
   ctx.save();ctx.beginPath();ctx.rect(wx,wy,ww,wh);ctx.clip();
-  ctx.fillStyle='#5ab85c';ctx.fillRect(wx,wy+wh*0.78,ww,wh*0.22);
-  ctx.fillStyle='#1b5e20';ctx.beginPath();ctx.arc(wx+ww*0.62,wy+wh*0.62,ww*0.18,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#2e7d32';ctx.beginPath();ctx.arc(wx+ww*0.62,wy+wh*0.55,ww*0.13,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#5d3a1a';ctx.fillRect(wx+ww*0.58,wy+wh*0.66,ww*0.07,wh*0.32);
-  ctx.fillStyle='rgba(255,220,80,0.9)';ctx.beginPath();ctx.arc(wx+ww*0.2,wy+wh*0.16,ww*0.08,0,Math.PI*2);ctx.fill();
+  // (No sun or moon here — daytime pond view; the sun belongs to the living room)
+  // Distant tree line / far bank
+  ctx.fillStyle='#3e8c5a';ctx.fillRect(wx,wy+wh*0.48,ww,wh*0.10);
+  ctx.fillStyle='#2e7d44';
+  [0.12,0.3,0.5,0.72,0.9].forEach(fx=>{ctx.beginPath();ctx.arc(wx+ww*fx,wy+wh*0.48,ww*0.06,0,Math.PI*2);ctx.fill();});
+  // Pond water — fills the lower portion
+  const pondG=ctx.createLinearGradient(wx,wy+wh*0.55,wx,wy+wh);
+  pondG.addColorStop(0,'#7bb8d8');pondG.addColorStop(0.5,'#4f97c4');pondG.addColorStop(1,'#2f6f9e');
+  ctx.fillStyle=pondG;ctx.fillRect(wx,wy+wh*0.56,ww,wh*0.44);
+  // Soft daylight shimmer on the water
+  ctx.fillStyle='rgba(255,255,255,0.22)';
+  ctx.beginPath();ctx.ellipse(wx+ww*0.4,wy+wh*0.72,ww*0.12,wh*0.012,0,0,Math.PI*2);ctx.fill();
+  // Ripple lines
+  ctx.strokeStyle='rgba(220,240,255,0.5)';ctx.lineWidth=1;
+  [0.66,0.78,0.9].forEach((ry,i)=>{
+    ctx.beginPath();ctx.ellipse(wx+ww*(0.5+i*0.08),wy+wh*ry,ww*(0.3-i*0.06),wh*0.018,0,0,Math.PI*2);ctx.stroke();
+  });
+  // Lily pads with little pink lilies
+  [[0.30,0.72,0.07],[0.58,0.82,0.06],[0.74,0.70,0.05]].forEach(([lx,ly,lr])=>{
+    ctx.fillStyle='#2e7d32';
+    ctx.beginPath();ctx.moveTo(wx+ww*lx,wy+wh*ly);ctx.arc(wx+ww*lx,wy+wh*ly,ww*lr,0.4,Math.PI*2-0.4);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#ff8fab';ctx.beginPath();ctx.arc(wx+ww*lx,wy+wh*ly,ww*lr*0.30,0,Math.PI*2);ctx.fill();
+  });
+  // Reeds at the near edge
+  ctx.strokeStyle='#3a7a3e';ctx.lineWidth=2;ctx.lineCap='round';
+  [0.08,0.14,0.20].forEach((rx,i)=>{
+    ctx.beginPath();ctx.moveTo(wx+ww*rx,wy+wh);ctx.quadraticCurveTo(wx+ww*(rx+0.02),wy+wh*0.78,wx+ww*(rx+0.01),wy+wh*0.70);ctx.stroke();
+    ctx.fillStyle='#6d4c2e';ctx.beginPath();ctx.ellipse(wx+ww*(rx+0.01),wy+wh*0.69,ww*0.012,wh*0.025,0,0,Math.PI*2);ctx.fill();
+  });
   ctx.restore();
+  // Glass tint + frame
+  ctx.fillStyle='rgba(180,230,255,0.06)';ctx.fillRect(wx,wy,ww,wh);
   ctx.strokeStyle='#7a4a18';ctx.lineWidth=6;ctx.strokeRect(wx,wy,ww,wh);
   ctx.strokeStyle='rgba(100,60,20,0.4)';ctx.lineWidth=2.5;
   ctx.beginPath();ctx.moveTo(wx+ww*0.5,wy);ctx.lineTo(wx+ww*0.5,wy+wh);ctx.stroke();
@@ -4661,6 +4693,10 @@ const FURNITURE_CATALOGUE = [
   {id:'candy_sofa',  name:'Candy Couch',    icon:'🍭', cost:0,   rarity:'pro',    theme:'Candy',  slot:'left',      desc:'Gummy cushions, candy-striped',       pro:true},
   {id:'trophy_wall', name:'Trophy Wall',    icon:'🏆', cost:0,   rarity:'pro',    theme:'Forest', slot:'wall',      desc:'Show off your rarest',    pro:true},
   {id:'pirate_chest',name:'Pirate Chest',   icon:'🧰', cost:0,   rarity:'pro',    theme:'Pirate', slot:'corner',    desc:'Full of treasure',        pro:true},
+
+  // ═══ KITCHEN ITEMS (room:'kitchen') ═══
+  // Free starter — squishies wander over, sniff, and a 🍪 bubble pops above them.
+  {id:'cookie_jar',  name:'Cookie Jar',     icon:'🍪', cost:0,   rarity:'free',   theme:'Kitchen', slot:'table_top', desc:'Squishies sneak cookies!', room:'kitchen'},
 ];
 
 // ── HOME ROOM RENDERER ──
@@ -4952,7 +4988,8 @@ function _paintRoom(ctx,W,H,t){
   lampGlow.addColorStop(0,'rgba(255,200,100,0.20)');lampGlow.addColorStop(1,'rgba(255,200,100,0)');
   ctx.fillStyle=lampGlow;ctx.fillRect(0,0,W*0.42,H*0.72);
 
-  // ── Wall plaque — top left, small and tasteful (teaser for a future room) ──
+  // ── Wall plaque — Kitchen door (living room only) ──
+  if(state.currentRoom!=='kitchen'){
   ctx.save();
   ctx.fillStyle='rgba(80,40,10,0.50)';ctx.beginPath();ctx.roundRect(W*0.03,H*0.04,W*0.24,H*0.09,5);ctx.fill();
   ctx.strokeStyle='rgba(200,150,70,0.35)';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(W*0.03,H*0.04,W*0.24,H*0.09,5);ctx.stroke();
@@ -4960,6 +4997,7 @@ function _paintRoom(ctx,W,H,t){
   ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.fillText('🍳 Enter Kitchen',W*0.15,H*0.085);
   ctx.restore();
+  }
 }
 
 function _drawPremiumSquirrel(ctx,t,sitting){
@@ -6040,6 +6078,59 @@ function _drawFurnitureInRoom(ctx,W,H,t){
       return;
     }
 
+    // ── KITCHEN: Cookie Jar ──
+    if(item.id==='cookie_jar'){
+      const jw=W*0.10, jh=H*0.15;
+      const jx=px-jw*0.5, jy=py-jh; // base-anchored
+      ctx.save();
+      // Floor contact shadow
+      const sh=ctx.createRadialGradient(px,py,1,px,py,jw*0.6);
+      sh.addColorStop(0,'rgba(0,0,0,0.18)');sh.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=sh;ctx.beginPath();ctx.ellipse(px,py,jw*0.55,H*0.018,0,0,Math.PI*2);ctx.fill();
+      // Glass jar body — rounded, translucent
+      const bodyG=ctx.createLinearGradient(jx,0,jx+jw,0);
+      bodyG.addColorStop(0,'rgba(180,210,225,0.55)');
+      bodyG.addColorStop(0.4,'rgba(225,240,248,0.45)');
+      bodyG.addColorStop(1,'rgba(170,200,218,0.55)');
+      ctx.fillStyle=bodyG;
+      ctx.beginPath();ctx.roundRect(jx,jy+jh*0.18,jw,jh*0.82,jw*0.22);ctx.fill();
+      // Cookies stacked inside (drawn before glass shine so they read as "inside")
+      const cookieCol=['#C8853C','#B5732E','#D49A52'];
+      [[0.30,0.62,0.20],[0.62,0.66,0.18],[0.46,0.48,0.19],[0.34,0.82,0.17],[0.66,0.84,0.16]].forEach(([cx,cy,cr],i)=>{
+        const ccx=jx+jw*cx, ccy=jy+jh*cy, ccr=jw*cr;
+        ctx.fillStyle=cookieCol[i%3];
+        ctx.beginPath();ctx.arc(ccx,ccy,ccr,0,Math.PI*2);ctx.fill();
+        // choc chips
+        ctx.fillStyle='#5a3210';
+        [[-0.3,-0.2],[0.25,0.1],[-0.1,0.3],[0.3,-0.25]].forEach(([dx,dy])=>{
+          ctx.beginPath();ctx.arc(ccx+ccr*dx,ccy+ccr*dy,ccr*0.16,0,Math.PI*2);ctx.fill();
+        });
+      });
+      // Glass shine streak
+      ctx.fillStyle='rgba(255,255,255,0.45)';
+      ctx.beginPath();ctx.roundRect(jx+jw*0.14,jy+jh*0.24,jw*0.16,jh*0.66,jw*0.08);ctx.fill();
+      // Jar rim
+      ctx.fillStyle='rgba(150,180,200,0.6)';
+      ctx.beginPath();ctx.roundRect(jx-jw*0.04,jy+jh*0.12,jw*1.08,jh*0.12,jw*0.08);ctx.fill();
+      // Lid — warm wood, with knob
+      const lidG=ctx.createLinearGradient(0,jy-jh*0.02,0,jy+jh*0.16);
+      lidG.addColorStop(0,'#C8894A');lidG.addColorStop(1,'#9A6028');
+      ctx.fillStyle=lidG;
+      ctx.beginPath();ctx.roundRect(jx-jw*0.06,jy,jw*1.12,jh*0.16,jw*0.10);ctx.fill();
+      ctx.fillStyle='#7A4A1A';
+      ctx.beginPath();ctx.ellipse(px,jy-jh*0.02,jw*0.10,jh*0.05,0,0,Math.PI*2);ctx.fill();
+      // A crumb or two on the counter
+      ctx.fillStyle='#B5732E';
+      ctx.beginPath();ctx.arc(jx-jw*0.12,py-2,2,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(jx+jw*1.10,py-1,1.6,0,Math.PI*2);ctx.fill();
+      ctx.restore();
+      if(_movingFurnitureId===p.id||_placingFurnitureId===p.id){
+        ctx.save();ctx.strokeStyle='#FFD166';ctx.lineWidth=2;ctx.setLineDash([4,3]);
+        ctx.beginPath();ctx.roundRect(jx-4,jy-4,jw+8,jh+8,4);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+      }
+      return;
+    }
+
     // Fallback emoji (should never reach here for known items)
     ctx.save();
     ctx.textAlign='center';ctx.textBaseline='middle';
@@ -6384,6 +6475,10 @@ function _buildShopTab(el){
   const isPro=state.isPro||false;
   const coins=state.coins||0;
   const RARITY_COLORS={free:'#4CAF50',common:'#888',rare:'#1565C0',pro:'#7B1FA2'};
+  // Show only items for the room the player is standing in. Items with no
+  // `room` field belong to the living room (all the original furniture).
+  const _room=state.currentRoom||'living';
+  const ROOM_CATALOGUE=FURNITURE_CATALOGUE.filter(it=>(it.room||'living')===_room);
 
   let html=`<div style="padding:12px 14px 4px;display:flex;align-items:center;gap:8px;background:#FFF3E0;border-bottom:1px solid #F0E0C8">
     <span style="font-size:22px">${coinSVG(22)}</span>
@@ -6395,7 +6490,7 @@ function _buildShopTab(el){
   </div>
   <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:12px">`;
 
-  FURNITURE_CATALOGUE.forEach(item=>{
+  ROOM_CATALOGUE.forEach(item=>{
     const isOwned=owned.includes(item.id);
     const isPlaced=placedIds.has(item.id);
     const canAfford=coins>=item.cost;
@@ -6453,7 +6548,7 @@ function _buildShopTab(el){
 
   // Draw canvas icons for specially-rendered items
   requestAnimationFrame(()=>{
-    FURNITURE_CATALOGUE.forEach(item=>{
+    ROOM_CATALOGUE.forEach(item=>{
       const c=document.getElementById('shop-icon-'+item.id);
       if(!c)return;
       const dpr=window.devicePixelRatio||1;
@@ -7537,6 +7632,26 @@ function debugUnlockHome(){
   saveState();
   showToast('🛠 Walk left — treehouse is right there! 🏡');
 }
+
+// ▼▼▼ DEV ONLY — REMOVE BEFORE LAUNCH ▼▼▼
+// One-tap shortcut for development: unlocks the home and drops you straight
+// into the treehouse room screen, skipping park exploration. Safe to delete
+// entirely along with its button on the welcome screen.
+function devJumpToTreehouse(){
+  // Make sure the day-streak / first-visit bookkeeping still runs sensibly
+  try{
+    const today=new Date().toDateString();
+    if(!state.lastVisit) state.streak=1;
+    state.lastVisit=today;
+    if(state.firstTime) state.firstTime=false; // skip new-player hints during dev
+  }catch(e){}
+  debugUnlockHome();
+  // Force living room as the entry room, then open the home screen directly
+  state.currentRoom='living';
+  saveState();
+  showScreen('home');
+}
+// ▲▲▲ DEV ONLY — REMOVE BEFORE LAUNCH ▲▲▲
 
 function initPark(){
   const bg=document.getElementById('park-bg'),ov=document.getElementById('park-ov'),sp=document.getElementById('screen-park');
