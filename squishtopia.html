@@ -8719,11 +8719,20 @@ document.addEventListener('visibilitychange',()=>{
     const elapsed = Math.floor((Date.now()-_sessionStart)/60000);
     state.playTimeToday = Math.min(30,(state.playTimeToday||0)+elapsed);
     saveState();
+    // Stop all audio when the app is backgrounded/closed so music doesn't
+    // linger after the tester leaves. Suspending the context silences the
+    // looping music AND any sound effects in one shot.
+    if(_ac && _ac.state==='running'){ try{ _ac.suspend(); }catch(e){} }
   } else {
     _sessionStart = Date.now();
     _sessionWarned = false;
+    // Resume audio only if music is on and the context was suspended.
+    if(_ac && _ac.state==='suspended' && state.musicEnabled){ try{ _ac.resume(); }catch(e){} }
   }
 });
+// Belt-and-suspenders: also suspend on pagehide (covers app close / tab kill
+// on mobile, where visibilitychange isn't always guaranteed to fire).
+window.addEventListener('pagehide',()=>{ if(_ac && _ac.state==='running'){ try{ _ac.suspend(); }catch(e){} } });
 function openParentSettings(){
   pinBuffer='';updatePinDots();
   document.getElementById('pin-view').style.display='';
