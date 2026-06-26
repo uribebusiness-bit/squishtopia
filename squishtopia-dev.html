@@ -84,10 +84,12 @@
   // ── 2. Manifest is now a static file (manifest.json) linked in <head> ──
 
   // ── 3. Service worker — real static file (service-worker.js) for offline play ──
+  // The SW is optional (offline caching only). If it can't register — e.g. when
+  // the file isn't served in a given environment — we silently skip it rather
+  // than logging a warning, since it never affects gameplay.
   if('serviceWorker' in navigator){
     window.addEventListener('load',()=>{
-      navigator.serviceWorker.register('service-worker.js')
-        .catch(err=>console.warn('SW registration failed:',err));
+      navigator.serviceWorker.register('service-worker.js').catch(()=>{ /* offline caching unavailable — ignore */ });
     });
   }
 })();
@@ -1140,6 +1142,28 @@ try {
       // placedResidents fields persist the LIVING room, so the active room must
       // be living on load or they'd be mismatched. Kitchen data stays parked.
       state.currentRoom='living';
+
+      // One-time cleanup: early test builds (before per-room shop filtering)
+      // could place kitchen items into the living room. Relocate any known
+      // kitchen item out of the living room's array and into the parked kitchen
+      // furniture, so each item shows only in its room. NOTE: FURNITURE_CATALOGUE
+      // is defined later in the file, so we use an explicit id set here.
+      // Keep this set in sync as kitchen items are added.
+      try{
+        const KITCHEN_IDS=new Set(['cookie_jar','mixing_bowl','step_stool','pancake_griddle','juice_blender']);
+        if(Array.isArray(state.placedFurniture)){
+          const _strays=state.placedFurniture.filter(p=>KITCHEN_IDS.has(p.id));
+          if(_strays.length){
+            state.placedFurniture=state.placedFurniture.filter(p=>!KITCHEN_IDS.has(p.id));
+            if(!state.rooms) state.rooms={kitchen:{furniture:[],residents:[]}};
+            if(!state.rooms.kitchen) state.rooms.kitchen={furniture:[],residents:[]};
+            const kf=Array.isArray(state.rooms.kitchen.furniture)?state.rooms.kitchen.furniture:[];
+            _strays.forEach(s=>{ if(!kf.some(k=>k.id===s.id)) kf.push(s); });
+            state.rooms.kitchen.furniture=kf;
+          }
+        }
+      }catch(_e){}
+
       state.version = SAVE_VERSION;
     }
   }
@@ -4338,6 +4362,8 @@ function switchRoom(target){
 function _updateRoomChrome(){
   const titleEl=document.getElementById('home-room-title');
   if(titleEl) titleEl.textContent = state.currentRoom==='kitchen' ? '🍳 Cozy Kitchen' : '🏡 Home Sweet Home';
+  const shopTab=document.getElementById('home-tab-shop');
+  if(shopTab) shopTab.textContent = state.currentRoom==='kitchen' ? '🍳 Kitchen Shop' : '🛋 Furniture Shop';
 }
 
 // ── KITCHEN BACKGROUND ──────────────────────────────────────────
@@ -4524,11 +4550,11 @@ function _paintKitchen(ctx,W,H,t){
 
   // ── "Back to Living Room" door plaque (top-left) — tappable ──
   ctx.save();
-  ctx.fillStyle='rgba(80,40,10,0.55)';ctx.beginPath();ctx.roundRect(W*0.03,H*0.04,W*0.26,H*0.09,5);ctx.fill();
-  ctx.strokeStyle='rgba(200,150,70,0.4)';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(W*0.03,H*0.04,W*0.26,H*0.09,5);ctx.stroke();
+  ctx.fillStyle='rgba(80,40,10,0.55)';ctx.beginPath();ctx.roundRect(W*0.03,H*0.04,W*0.34,H*0.09,5);ctx.fill();
+  ctx.strokeStyle='rgba(200,150,70,0.4)';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(W*0.03,H*0.04,W*0.34,H*0.09,5);ctx.stroke();
   ctx.fillStyle='#ffd890';ctx.font=`bold ${Math.min(H*0.026,13)}px Nunito,sans-serif`;
   ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText('🏡 Back to Living Room',W*0.16,H*0.085);
+  ctx.fillText('🏡 Back to Living Room',W*0.20,H*0.085);
   ctx.restore();
 }
 
@@ -4572,7 +4598,7 @@ function buildHome(){
       // Priority 1.5: door plaque (top-left) switches rooms
       // Living room → "🍳 Enter Kitchen"; Kitchen → "🏡 Back to Living Room".
       // Hit box matches the plaque rect drawn in _paintRoom/_paintKitchen.
-      if(nx>=0.03 && nx<=0.31 && ny>=0.04 && ny<=0.14){
+      if(nx>=0.03 && nx<=0.37 && ny>=0.04 && ny<=0.14){
         switchRoom(state.currentRoom==='kitchen' ? 'living' : 'kitchen');
         return;
       }
@@ -4697,6 +4723,10 @@ const FURNITURE_CATALOGUE = [
   // ═══ KITCHEN ITEMS (room:'kitchen') ═══
   // Free starter — squishies wander over, sniff, and a 🍪 bubble pops above them.
   {id:'cookie_jar',  name:'Cookie Jar',     icon:'🍪', cost:0,   rarity:'free',   theme:'Kitchen', slot:'table_top', desc:'Squishies sneak cookies!', room:'kitchen'},
+  {id:'mixing_bowl', name:'Mixing Bowl & Whisk', icon:'🥣', cost:45, rarity:'common', theme:'Kitchen', slot:'table_top', desc:'Squishies hop up and bake!', room:'kitchen'},
+  {id:'step_stool',  name:'Step Stool',      icon:'🪜', cost:0,  rarity:'free',   theme:'Kitchen', slot:'floor',     desc:'Squishies climb up to reach the counter!', room:'kitchen'},
+  {id:'pancake_griddle', name:'Pancake Griddle', icon:'🥞', cost:90, rarity:'common', theme:'Kitchen', slot:'table_top', desc:'Squishies flip flapjacks!', room:'kitchen'},
+  {id:'juice_blender', name:'Juice Bar Blender', icon:'🥤', cost:70, rarity:'common', theme:'Kitchen', slot:'table_top', desc:'Squishies blend fruity smoothies!', room:'kitchen'},
 ];
 
 // ── HOME ROOM RENDERER ──
@@ -4876,13 +4906,30 @@ function _paintRoom(ctx,W,H,t){
   (function(){
     const residents=Array.isArray(state.placedResidents)?state.placedResidents:[];
     const sqSz=Math.min(W*0.055,H*0.085);
+    // Reset the mixing-bowl baking flag; set true below if a squishy bakes near it.
+    _mixBowlActiveNext=false;
+    _griddleActiveNext=false;
+    _blenderActiveNext=false;
     residents.forEach(function(r){
       _guardedDraw(ctx, function(){
         const ai=_getResAI(r.id,r.x,r.y);
         _tickResAI(ai,r.id,W,H,t);
         const sq=SQUISHIES.find(s=>s.id===r.id);
         if(!sq) return;
-        const px=ai.x*W, py=ai.y*H;
+        const px=ai.x*W, py0=ai.y*H;
+        // Counter-reach: once arrived at the spot, either stand raised on the
+        // stool (lift to counter height) or hop up toward a counter item.
+        let reachLift=0, hopBounce=0;
+        if(ai.state===RES_STATES.EAT){
+          const ddx=ai.x-(ai.targetX||ai.x), ddy=ai.y-(ai.targetY||ai.y);
+          const arrived=(ddx*ddx+ddy*ddy)<0.0012;
+          if(arrived && ai.onStool){
+            reachLift = H*0.16; // climb the tall stool up to counter height
+          } else if(arrived && ai.hopReach){
+            hopBounce = Math.abs(Math.sin(t*0.25+ai.bobPhase))*H*0.045; // springy hop
+          }
+        }
+        const py=py0 - reachLift - hopBounce;
         const bob=(ai.state===RES_STATES.WANDER)?Math.abs(Math.sin(t*0.28+ai.bobPhase))*4
                  :(ai.state===RES_STATES.DANCE)?Math.sin(t*0.38+ai.bobPhase)*7
                  :(ai.state===RES_STATES.GREET||ai.state===RES_STATES.CELEBRATE)?-Math.abs(Math.sin(t*0.48+ai.bobPhase))*10
@@ -4912,6 +4959,9 @@ function _paintRoom(ctx,W,H,t){
       if(sq){ctx.save();ctx.globalAlpha=0.5;ctx.translate(_placeCursorX*W,_placeCursorY*H);_safeDraw(ctx,sq,0,0,sqSz*0.9,t);ctx.restore();}
     }
   })();
+  _mixBowlActive=_mixBowlActiveNext;
+  _griddleActive=_griddleActiveNext;
+  _blenderActive=_blenderActiveNext;
 
   // ── Squirrel movement ──
   const sqSpeed = 0.018;
@@ -6131,6 +6181,254 @@ function _drawFurnitureInRoom(ctx,W,H,t){
       return;
     }
 
+    // ── KITCHEN: Mixing Bowl & Whisk ──
+    if(item.id==='mixing_bowl'){
+      const bw=W*0.11, bh=H*0.085;
+      const bx=px, by=py-bh*0.5; // bowl center, base-anchored near py
+      // Is a squishy actively baking here? (set by AI when EATing near this item)
+      const baking = !!_mixBowlActive;
+      const stir = Math.sin(t*0.22)* (baking?1:0.5); // whisk swing, livelier when baking
+      ctx.save();
+      // Floor contact shadow
+      const sh=ctx.createRadialGradient(px,py,1,px,py,bw*0.6);
+      sh.addColorStop(0,'rgba(0,0,0,0.18)');sh.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=sh;ctx.beginPath();ctx.ellipse(px,py,bw*0.6,H*0.016,0,0,Math.PI*2);ctx.fill();
+
+      // Bowl — glossy ceramic (mint), drawn as a rounded half-ellipse
+      const bowlG=ctx.createLinearGradient(bx-bw*0.5,by,bx+bw*0.5,by);
+      bowlG.addColorStop(0,'#7eccb8');bowlG.addColorStop(0.5,'#a7e3d2');bowlG.addColorStop(1,'#6bb9a4');
+      ctx.fillStyle=bowlG;
+      ctx.beginPath();
+      ctx.moveTo(bx-bw*0.5,by);
+      ctx.quadraticCurveTo(bx-bw*0.5,by+bh,bx,by+bh);
+      ctx.quadraticCurveTo(bx+bw*0.5,by+bh,bx+bw*0.5,by);
+      ctx.closePath();ctx.fill();
+      // Batter inside (top ellipse)
+      ctx.fillStyle='#f3e3b8';
+      ctx.beginPath();ctx.ellipse(bx,by,bw*0.5,bh*0.32,0,0,Math.PI*2);ctx.fill();
+      // batter swirl highlight
+      ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.arc(bx-bw*0.08+stir*1.5,by-bh*0.02,bw*0.16,0.2,Math.PI*1.3);ctx.stroke();
+      // Bowl rim
+      ctx.strokeStyle='#5ea892';ctx.lineWidth=2;
+      ctx.beginPath();ctx.ellipse(bx,by,bw*0.5,bh*0.32,0,0,Math.PI*2);ctx.stroke();
+      // Bowl shine
+      ctx.fillStyle='rgba(255,255,255,0.35)';
+      ctx.beginPath();ctx.ellipse(bx-bw*0.22,by+bh*0.35,bw*0.09,bh*0.18,-0.5,0,Math.PI*2);ctx.fill();
+
+      // Whisk — handle + wire loops, leaning into the bowl and swinging with stir
+      ctx.save();
+      ctx.translate(bx+bw*0.22, by-bh*0.1);
+      ctx.rotate(0.5 + stir*0.18);
+      // handle
+      ctx.strokeStyle='#cfd6da';ctx.lineWidth=3;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,-bh*1.5);ctx.stroke();
+      ctx.fillStyle='#b8c0c4';ctx.beginPath();ctx.ellipse(0,-bh*1.5,2.5,4,0,0,Math.PI*2);ctx.fill();
+      // wire loops at the bottom (in the batter)
+      ctx.strokeStyle='#dfe5e8';ctx.lineWidth=1.4;
+      [-0.5,0,0.5].forEach(o=>{
+        ctx.beginPath();ctx.ellipse(o*bw*0.05,bh*0.18,bw*0.05,bh*0.22,o*0.3,0,Math.PI*2);ctx.stroke();
+      });
+      ctx.restore();
+
+      // Flour-puff sparkles drifting up (always gentle; more when baking)
+      const puffs = baking?4:2;
+      for(let i=0;i<puffs;i++){
+        const ph=((t*0.6 + i*37) % 60)/60; // 0..1 rising
+        const pa=(1-ph)*(baking?0.7:0.4);
+        const pxp=bx + Math.sin(t*0.05+i*2)*bw*0.18 + (i-1)*bw*0.12;
+        const pyp=by - ph*bh*2.2;
+        ctx.fillStyle=`rgba(255,255,255,${pa})`;
+        ctx.beginPath();ctx.arc(pxp,pyp,bw*0.05*(1-ph*0.4),0,Math.PI*2);ctx.fill();
+      }
+      // Little sparkle stars when actively baking
+      if(baking){
+        ctx.fillStyle='rgba(255,225,120,0.9)';
+        const sx=bx+Math.sin(t*0.13)*bw*0.4, sy=by-bh*1.6+Math.cos(t*0.11)*bh*0.3;
+        ctx.font=`${bw*0.18}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('✨',sx,sy);
+      }
+      ctx.restore();
+
+      if(_movingFurnitureId===p.id||_placingFurnitureId===p.id){
+        ctx.save();ctx.strokeStyle='#FFD166';ctx.lineWidth=2;ctx.setLineDash([4,3]);
+        ctx.beginPath();ctx.roundRect(bx-bw*0.55,by-bh*1.7,bw*1.1,bh*2.3,4);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+      }
+      return;
+    }
+
+    // ── KITCHEN: Step Stool ──
+    // A tall 3-step wooden stool the squishy climbs to reach the counter.
+    if(item.id==='step_stool'){
+      const sw=W*0.10, shgt=H*0.17;
+      const sx=px-sw*0.5, sy=py-shgt; // base-anchored
+      ctx.save();
+      // Contact shadow
+      const sh=ctx.createRadialGradient(px,py,1,px,py,sw*0.6);
+      sh.addColorStop(0,'rgba(0,0,0,0.18)');sh.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=sh;ctx.beginPath();ctx.ellipse(px,py,sw*0.6,H*0.015,0,0,Math.PI*2);ctx.fill();
+      const woodTop1=ctx.createLinearGradient(0,sy,0,sy+shgt);
+      woodTop1.addColorStop(0,'#D89B57');woodTop1.addColorStop(1,'#B5762F');
+      const woodLeg='#9A6028', woodLegDark='#7d4d1f';
+      // Two side rails that lean slightly (ladder-stool silhouette)
+      ctx.strokeStyle=woodLegDark;ctx.lineWidth=Math.max(3,sw*0.07);ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(sx+sw*0.10,py);ctx.lineTo(sx+sw*0.22,sy);ctx.stroke();           // back-left rail
+      ctx.beginPath();ctx.moveTo(sx+sw*0.90,py);ctx.lineTo(sx+sw*0.78,sy);ctx.stroke();           // back-right rail
+      // Three ascending steps (wide bottom → narrow top)
+      const steps=[
+        {y:0.70, l:0.02, r:0.98}, // bottom (widest, lowest)
+        {y:0.42, l:0.10, r:0.90}, // middle
+        {y:0.12, l:0.20, r:0.80}, // top (narrowest, highest — counter level)
+      ];
+      steps.forEach((s,i)=>{
+        const stepY=sy+shgt*s.y;
+        // step front face (slight 3D)
+        ctx.fillStyle=woodLeg;
+        ctx.fillRect(sx+sw*s.l, stepY+shgt*0.02, sw*(s.r-s.l), shgt*0.10);
+        // step tread (top surface)
+        ctx.fillStyle=woodTop1;
+        ctx.beginPath();ctx.roundRect(sx+sw*(s.l-0.02), stepY, sw*(s.r-s.l+0.04), shgt*0.07, 3);ctx.fill();
+        // tread highlight
+        ctx.fillStyle='rgba(255,255,255,0.20)';
+        ctx.fillRect(sx+sw*(s.l), stepY+shgt*0.008, sw*(s.r-s.l), shgt*0.018);
+      });
+      ctx.restore();
+      if(_movingFurnitureId===p.id||_placingFurnitureId===p.id){
+        ctx.save();ctx.strokeStyle='#FFD166';ctx.lineWidth=2;ctx.setLineDash([4,3]);
+        ctx.beginPath();ctx.roundRect(sx-4,sy-4,sw+8,shgt+8,4);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+      }
+      return;
+    }
+
+    // ── KITCHEN: Pancake Griddle ──
+    if(item.id==='pancake_griddle'){
+      const gw=W*0.10, gh=H*0.042;
+      const gx=px, gy=py-gh*0.5; // griddle center
+      const cooking=!!_griddleActive;
+      ctx.save();
+      // Contact shadow
+      const sh=ctx.createRadialGradient(px,py,1,px,py,gw*0.6);
+      sh.addColorStop(0,'rgba(0,0,0,0.18)');sh.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=sh;ctx.beginPath();ctx.ellipse(px,py,gw*0.55,H*0.014,0,0,Math.PI*2);ctx.fill();
+      // Griddle base (dark cast-iron slab on short legs)
+      ctx.fillStyle='#3a3a40';
+      ctx.beginPath();ctx.roundRect(gx-gw*0.5,gy-gh*0.3,gw,gh*0.9,gh*0.4);ctx.fill();
+      // Cooking surface (slightly lighter top ellipse)
+      const surfG=ctx.createLinearGradient(gx,gy-gh*0.3,gx,gy+gh*0.3);
+      surfG.addColorStop(0,'#55555c');surfG.addColorStop(1,'#3a3a40');
+      ctx.fillStyle=surfG;ctx.beginPath();ctx.ellipse(gx,gy-gh*0.2,gw*0.46,gh*0.4,0,0,Math.PI*2);ctx.fill();
+      // Handle (right side) — short, so it reads as a compact griddle
+      ctx.strokeStyle='#6d4c2e';ctx.lineWidth=Math.max(2.5,gh*0.4);ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(gx+gw*0.46,gy-gh*0.1);ctx.lineTo(gx+gw*0.58,gy-gh*0.1);ctx.stroke();
+
+      // Heat shimmer + a couple of pancakes resting on the surface
+      // Draw resting stack
+      for(let s=0;s<2;s++){
+        const ry=gy-gh*0.25 - s*gh*0.18;
+        ctx.fillStyle=s%2?'#E3A24B':'#EBB45C';
+        ctx.beginPath();ctx.ellipse(gx-gw*0.12,ry,gw*0.16,gh*0.30,0,0,Math.PI*2);ctx.fill();
+      }
+      // syrup dot
+      ctx.fillStyle='#9A5B22';ctx.beginPath();ctx.arc(gx-gw*0.12,gy-gh*0.55,gw*0.03,0,Math.PI*2);ctx.fill();
+
+      // The FLIPPING pancake — arcs up and back down on a loop when cooking
+      if(cooking){
+        const cyc=(t*0.04)%1;                 // 0..1 flight cycle
+        const arc=Math.sin(cyc*Math.PI);      // 0 at ends, 1 at apex
+        const fpx=gx+gw*0.12 + (cyc-0.5)*gw*0.10;
+        const fpy=gy-gh*0.3 - arc*H*0.10;     // rises up to ~0.10H
+        const spin=cyc*Math.PI*3;             // visual flip via vertical squash
+        const sq=Math.abs(Math.cos(spin));    // 1→0→1 squash to fake rotation
+        ctx.save();ctx.translate(fpx,fpy);
+        ctx.fillStyle='#EBB45C';
+        ctx.beginPath();ctx.ellipse(0,0,gw*0.16,gh*0.30*sq+1,0,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#C8853C';
+        ctx.beginPath();ctx.ellipse(0,-gh*0.12*sq,gw*0.10,gh*0.10*sq+0.5,0,0,Math.PI*2);ctx.fill(); // butter pat
+        ctx.restore();
+        // sizzle sparkles near surface
+        ctx.fillStyle='rgba(255,240,200,0.7)';
+        for(let i=0;i<3;i++){
+          const sh2=((t*0.5+i*20)%30)/30;
+          ctx.beginPath();ctx.arc(gx-gw*0.05+i*gw*0.08, gy-gh*0.3 - sh2*gh*1.2, (1-sh2)*1.6, 0, Math.PI*2);ctx.fill();
+        }
+      }
+      ctx.restore();
+      if(_movingFurnitureId===p.id||_placingFurnitureId===p.id){
+        ctx.save();ctx.strokeStyle='#FFD166';ctx.lineWidth=2;ctx.setLineDash([4,3]);
+        ctx.beginPath();ctx.roundRect(gx-gw*0.55,gy-H*0.13,gw*1.3,H*0.17,4);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+      }
+      return;
+    }
+
+    // ── KITCHEN: Juice Bar Blender ──
+    if(item.id==='juice_blender'){
+      const bw=W*0.075, bh=H*0.16;
+      const bx=px, byTop=py-bh; // base-anchored
+      const blending=!!_blenderActive;
+      ctx.save();
+      // Contact shadow
+      const sh=ctx.createRadialGradient(px,py,1,px,py,bw*0.7);
+      sh.addColorStop(0,'rgba(0,0,0,0.18)');sh.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=sh;ctx.beginPath();ctx.ellipse(px,py,bw*0.65,H*0.014,0,0,Math.PI*2);ctx.fill();
+      // Motor base (rounded trapezoid)
+      const baseG=ctx.createLinearGradient(bx-bw*0.5,0,bx+bw*0.5,0);
+      baseG.addColorStop(0,'#cfd6da');baseG.addColorStop(0.5,'#eef2f4');baseG.addColorStop(1,'#bcc4c8');
+      ctx.fillStyle=baseG;
+      ctx.beginPath();ctx.moveTo(bx-bw*0.55,py);ctx.lineTo(bx-bw*0.42,py-bh*0.30);
+      ctx.lineTo(bx+bw*0.42,py-bh*0.30);ctx.lineTo(bx+bw*0.55,py);ctx.closePath();ctx.fill();
+      // Buttons on base (the active one glows when blending)
+      [-0.18,0,0.18].forEach((o,i)=>{
+        ctx.fillStyle=(blending&&i===1)?'#FF6B9D':'#9aa2a6';
+        ctx.beginPath();ctx.arc(bx+bw*o,py-bh*0.15,bw*0.06,0,Math.PI*2);ctx.fill();
+      });
+      // Clear jug
+      const jugTop=byTop, jugBot=py-bh*0.30, jugW=bw*0.74;
+      ctx.fillStyle='rgba(225,240,248,0.40)';
+      ctx.beginPath();ctx.roundRect(bx-jugW*0.5,jugTop,jugW,jugBot-jugTop,4);ctx.fill();
+      // Fruity contents (swirl + color shift when blending)
+      ctx.save();
+      ctx.beginPath();ctx.roundRect(bx-jugW*0.5+2,jugTop+bh*0.30,jugW-4,(jugBot-jugTop)-bh*0.30,3);ctx.clip();
+      // Base smoothie color cycles through fruity hues when active
+      const hue=blending? (Math.floor(t*4)%360) : 330; // pink at rest
+      const sat=blending?70:60, lig=blending?62:66;
+      ctx.fillStyle=`hsl(${hue},${sat}%,${lig}%)`;
+      ctx.fillRect(bx-jugW*0.5,jugTop+bh*0.34,jugW,jugBot-jugTop);
+      // Swirling fruit bits
+      const bits=blending?6:3;
+      for(let i=0;i<bits;i++){
+        const ang=t*(blending?0.18:0.03)+i*(Math.PI*2/bits);
+        const rr=jugW*0.22*(0.5+0.5*Math.sin(t*0.1+i));
+        const fxp=bx+Math.cos(ang)*rr;
+        const fyp=(jugTop+jugBot)*0.5+bh*0.08+Math.sin(ang)*rr*0.5;
+        ctx.fillStyle=['#FFD166','#FF6B6B','#9CCC65','#FFB74D'][i%4];
+        ctx.beginPath();ctx.arc(fxp,fyp,jugW*0.07,0,Math.PI*2);ctx.fill();
+      }
+      ctx.restore();
+      // Jug outline + shine
+      ctx.strokeStyle='rgba(150,180,200,0.6)';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.roundRect(bx-jugW*0.5,jugTop,jugW,jugBot-jugTop,4);ctx.stroke();
+      ctx.fillStyle='rgba(255,255,255,0.4)';
+      ctx.beginPath();ctx.roundRect(bx-jugW*0.5+3,jugTop+3,jugW*0.16,(jugBot-jugTop)*0.7,2);ctx.fill();
+      // Lid + handle
+      ctx.fillStyle='#aab2b8';
+      ctx.beginPath();ctx.roundRect(bx-jugW*0.55,jugTop-bh*0.05,jugW*1.1,bh*0.06,3);ctx.fill();
+      ctx.strokeStyle='#8a9296';ctx.lineWidth=2.5;
+      ctx.beginPath();ctx.arc(bx+jugW*0.5,jugTop+(jugBot-jugTop)*0.4,bw*0.16,-Math.PI*0.5,Math.PI*0.5);ctx.stroke();
+      // Little vibration jiggle lines when blending
+      if(blending){
+        ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=1.5;
+        [-1,1].forEach(s=>{
+          ctx.beginPath();ctx.moveTo(bx+s*jugW*0.62,jugTop+bh*0.1);ctx.lineTo(bx+s*jugW*0.72,jugTop+bh*0.06);ctx.stroke();
+        });
+      }
+      ctx.restore();
+      if(_movingFurnitureId===p.id||_placingFurnitureId===p.id){
+        ctx.save();ctx.strokeStyle='#FFD166';ctx.lineWidth=2;ctx.setLineDash([4,3]);
+        ctx.beginPath();ctx.roundRect(bx-bw*0.6,byTop-4,bw*1.2,bh+8,4);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+      }
+      return;
+    }
+
     // Fallback emoji (should never reach here for known items)
     ctx.save();
     ctx.textAlign='center';ctx.textBaseline='middle';
@@ -6228,6 +6526,27 @@ const FAMILY_PERSONALITY = {
   'Gloomies':      {sleep:0.22, sit:0.25, eat:0.08, play:0.05, hide:0.22, wander:0.12, look:0.06},
 };
 
+// Returns the id of the resident currently nearest to (tx,ty), considering only
+// residents not already busy baking at a counter item. Used so the squishy
+// closest to the mixing bowl is the one who climbs up — kids can steer it by
+// placing a favorite squishy near the counter.
+function _nearestResidentTo(tx, ty, excludeBusyAt){
+  let best=null, bestD=Infinity;
+  const ids=(state.placedResidents||[]).map(r=>r.id);
+  ids.forEach(rid=>{
+    const a=_resAI[rid];
+    if(!a) return;
+    // Skip residents already actively baking at the same item (occupancy guard)
+    if(excludeBusyAt && a.state===RES_STATES.EAT && a.eatTargetId===excludeBusyAt && a._baking) {
+      // they hold the claim; treat as nearest so no one else takes it
+      return;
+    }
+    const dx=a.x-tx, dy=a.y-ty, d=dx*dx+dy*dy;
+    if(d<bestD){ bestD=d; best=rid; }
+  });
+  return best;
+}
+
 function _getResAI(id, startX, startY){
   if(!_resAI[id]){
     const clampedY = Math.max(0.68, Math.min(0.86, startY));
@@ -6259,6 +6578,37 @@ function _tickResAI(ai, id, W, H, t){
   // Sub-animation timers
   if(ai.state === RES_STATES.EAT) ai.eatTimer = (ai.eatTimer||0)+1;
   if(ai.state === RES_STATES.PLAY) ai.playAngle = (ai.playAngle||0)+0.12;
+
+  // If this resident is baking at the mixing bowl (in EAT state, having chosen
+  // it as the target, and arrived near the bowl — whether standing on a stool
+  // or hopping below it), light up the bowl's active baking animation.
+  if(ai.state===RES_STATES.EAT && ai.eatTargetId==='mixing_bowl'){
+    const _pf=Array.isArray(state.placedFurniture)?state.placedFurniture:[];
+    const bowl=_pf.find(p=>p.id==='mixing_bowl');
+    if(bowl){
+      const dx=ai.x-bowl.x;
+      if(dx*dx < 0.02){ _mixBowlActiveNext=true; ai._baking=true; }
+      else ai._baking=false;
+    }
+  } else if(ai.state===RES_STATES.EAT && ai.eatTargetId==='pancake_griddle'){
+    const _pf=Array.isArray(state.placedFurniture)?state.placedFurniture:[];
+    const grid=_pf.find(p=>p.id==='pancake_griddle');
+    if(grid){
+      const dx=ai.x-grid.x;
+      if(dx*dx < 0.02){ _griddleActiveNext=true; ai._baking=true; }
+      else ai._baking=false;
+    }
+  } else if(ai.state===RES_STATES.EAT && ai.eatTargetId==='juice_blender'){
+    const _pf=Array.isArray(state.placedFurniture)?state.placedFurniture:[];
+    const blend=_pf.find(p=>p.id==='juice_blender');
+    if(blend){
+      const dx=ai.x-blend.x;
+      if(dx*dx < 0.02){ _blenderActiveNext=true; ai._baking=true; }
+      else ai._baking=false;
+    }
+  } else {
+    ai._baking=false;
+  }
 
   // Move toward target
   const dx = ai.targetX - ai.x;
@@ -6297,7 +6647,7 @@ function _tickResAI(ai, id, W, H, t){
 
   const sleepable = placed.filter(p=>{ const item=FURNITURE_CATALOGUE.find(f=>f.id===p.id); return item&&SLEEP_SLOTS.has(item.slot); });
   const sittable  = placed.filter(p=>{ const item=FURNITURE_CATALOGUE.find(f=>f.id===p.id); return item&&SIT_SLOTS.has(item.slot); });
-  const eatSpots  = placed.filter(p=>{ const item=FURNITURE_CATALOGUE.find(f=>f.id===p.id); return item&&EAT_SLOTS.has(item.slot); });
+  const eatSpots  = placed.filter(p=>{ const item=FURNITURE_CATALOGUE.find(f=>f.id===p.id); return item&&EAT_SLOTS.has(item.slot)&&p.id!=='step_stool'; });
   const hideSpots = placed.filter(p=>{ const item=FURNITURE_CATALOGUE.find(f=>f.id===p.id); return item&&HIDE_SLOTS.has(item.slot); });
   const hasRadio  = placed.some(p=>p.id==='radio');
   const hasAquarium = placed.some(p=>p.id==='aquarium');
@@ -6348,12 +6698,45 @@ function _tickResAI(ai, id, W, H, t){
     ai.bubble='zzz'; ai.bubbleTimer=ai.stateTimer; return;
   }
   cum += pers.eat; if(eatSpots.length && r < cum){ // EAT
-    const t2=eatSpots[Math.floor(Math.random()*eatSpots.length)];
-    ai.state=RES_STATES.EAT; ai.eatTimer=0;
-    ai.targetX=Math.max(X_MIN,Math.min(X_MAX,t2.x+(Math.random()-0.5)*0.05));
-    ai.targetY=Math.max(FLOOR_Y_MIN,Math.min(FLOOR_Y_MAX,t2.y));
-    ai.stateTimer=100+Math.floor(Math.random()*80);
-    ai.bubble='food'; ai.bubbleTimer=40; return;
+    const COUNTER_ITEMS=new Set(['mixing_bowl','cookie_jar','pancake_griddle','juice_blender']);
+    // Prefer a counter item (bowl/jar) if one exists and THIS squishy is the
+    // nearest to it and no one's already using it — that squishy climbs up.
+    const counterSpot = eatSpots.find(s=>COUNTER_ITEMS.has(s.id));
+    let chosen=null, useCounter=false;
+    if(counterSpot){
+      const occupied=Object.keys(_resAI).some(rid=>rid!==id &&
+        _resAI[rid].state===RES_STATES.EAT && _resAI[rid].eatTargetId===counterSpot.id && _resAI[rid]._baking);
+      const nearest=_nearestResidentTo(counterSpot.x, counterSpot.y, counterSpot.id);
+      if(!occupied && nearest===id){ chosen=counterSpot; useCounter=true; }
+    }
+    // Otherwise eat at any (non-counter) floor spot if available.
+    if(!chosen){
+      const floorSpots=eatSpots.filter(s=>!COUNTER_ITEMS.has(s.id));
+      if(floorSpots.length) chosen=floorSpots[Math.floor(Math.random()*floorSpots.length)];
+    }
+    if(chosen){
+      ai.state=RES_STATES.EAT; ai.eatTimer=0;
+      ai.eatTargetId=chosen.id;
+      ai.onStool=false; ai.hopReach=false; ai._baking=false;
+      if(useCounter){
+        const stool=placed.find(p=>p.id==='step_stool');
+        if(stool){
+          ai.onStool=true;
+          ai.targetX=Math.max(X_MIN,Math.min(X_MAX,stool.x));
+          ai.targetY=Math.max(FLOOR_Y_MIN,Math.min(FLOOR_Y_MAX,stool.y));
+        } else {
+          ai.hopReach=true;
+          ai.targetX=Math.max(X_MIN,Math.min(X_MAX,chosen.x+(Math.random()-0.5)*0.04));
+          ai.targetY=FLOOR_Y_MIN+0.02;
+        }
+      } else {
+        ai.targetX=Math.max(X_MIN,Math.min(X_MAX,chosen.x+(Math.random()-0.5)*0.05));
+        ai.targetY=Math.max(FLOOR_Y_MIN,Math.min(FLOOR_Y_MAX,chosen.y));
+      }
+      ai.stateTimer=100+Math.floor(Math.random()*80);
+      ai.bubble='food'; ai.bubbleTimer=40; return;
+    }
+    // No usable eat spot for us this tick — fall through to other behaviors.
   }
   cum += pers.sit; if(sittable.length && r < cum){ // SIT
     const t2=sittable[Math.floor(Math.random()*sittable.length)];
@@ -6378,10 +6761,13 @@ function _tickResAI(ai, id, W, H, t){
   }
   cum += pers.look; if(r < cum){ // LOOK
     ai.state=RES_STATES.LOOK; ai.stateTimer=60+Math.floor(Math.random()*80);
-    if(Math.random()<0.45){ ai.bubble='note'; ai.bubbleTimer=50; } return;
+    // Idle "looking around" shows NO bubble — a squishy calmly glancing about
+    // in an empty room shouldn't appear to be reacting to anything.
+    ai.bubble=null; return;
   }
   // WANDER (default)
   ai.state=RES_STATES.WANDER;
+  ai.bubble=null; // no reaction while simply wandering
   ai.targetX=X_MIN+Math.random()*(X_MAX-X_MIN);
   ai.targetY=FLOOR_Y_MIN+Math.random()*(FLOOR_Y_MAX-FLOOR_Y_MIN);
   ai.stateTimer=70+Math.floor(Math.random()*100);
@@ -6510,7 +6896,7 @@ function _buildShopTab(el){
     } else {
       btn=`<button onclick="_buyFurniture('${item.id}')" ${canAfford?'':'disabled'} style="width:100%;background:${canAfford?'#FF9F43':'#E0E0E0'};border:none;border-radius:12px;padding:7px;font-size:11px;font-weight:800;color:${canAfford?'white':'#AAA'};cursor:${canAfford?'pointer':'default'};margin-top:2px">${item.cost+'🪙'}</button>`;
     }
-    const DRAWN_ITEMS=['lamp_basic','table_basic','rug_basic','rug_star','bed_cozy'];
+    const DRAWN_ITEMS=['lamp_basic','table_basic','rug_basic','rug_star','bed_cozy','step_stool','cookie_jar','mixing_bowl','pancake_griddle','juice_blender'];
     const useCanvas=DRAWN_ITEMS.includes(item.id);
     const iconHtml=useCanvas
       ? `<canvas id="shop-icon-${item.id}" width="56" height="56" style="width:56px;height:56px"></canvas>`
@@ -6616,6 +7002,78 @@ function _buildShopTab(el){
         ctx.beginPath();ctx.roundRect(bx+bw*0.12,by+bh*0.18,bw*0.32,bh*0.28,3);ctx.fill();
         ctx.fillStyle=col.frame||'#C07040';
         ctx.beginPath();ctx.roundRect(bx+bw*0.05,by,bw*0.90,bh*0.18,3);ctx.fill();
+      } else if(item.id==='step_stool'){
+        // Tall 3-step stool, mirrors the room art
+        const cx=28, baseY=50, topY=10, woodTop='#C98B4A', woodLeg='#9A6028';
+        ctx.strokeStyle='#7d4d1f';ctx.lineWidth=4;ctx.lineCap='round';
+        ctx.beginPath();ctx.moveTo(cx-10,baseY);ctx.lineTo(cx-6,topY);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(cx+10,baseY);ctx.lineTo(cx+6,topY);ctx.stroke();
+        [[baseY-2,16],[ (baseY+topY)/2,12],[topY+4,9]].forEach(([yy,half])=>{
+          ctx.fillStyle=woodLeg;ctx.fillRect(cx-half,yy+1,half*2,5);
+          ctx.fillStyle=woodTop;ctx.beginPath();ctx.roundRect(cx-half-2,yy-2,half*2+4,5,2);ctx.fill();
+        });
+      } else if(item.id==='cookie_jar'){
+        // Glass jar of cookies, mirrors the room art
+        const jx=16, jy=12, jw=24, jh=36;
+        ctx.fillStyle='rgba(200,225,238,0.55)';
+        ctx.beginPath();ctx.roundRect(jx,jy+jh*0.18,jw,jh*0.82,6);ctx.fill();
+        const cc=['#C8853C','#B5732E','#D49A52'];
+        [[0.32,0.55,5],[0.66,0.6,4.5],[0.48,0.42,5],[0.4,0.78,4],[0.66,0.82,4]].forEach(([fx,fy,r],i)=>{
+          ctx.fillStyle=cc[i%3];ctx.beginPath();ctx.arc(jx+jw*fx,jy+jh*fy,r,0,Math.PI*2);ctx.fill();
+          ctx.fillStyle='#5a3210';ctx.beginPath();ctx.arc(jx+jw*fx-1,jy+jh*fy-1,1,0,Math.PI*2);ctx.fill();
+        });
+        ctx.fillStyle='rgba(255,255,255,0.4)';ctx.beginPath();ctx.roundRect(jx+3,jy+jh*0.24,3,jh*0.6,2);ctx.fill();
+        const lidG=ctx.createLinearGradient(0,jy,0,jy+8);lidG.addColorStop(0,'#C8894A');lidG.addColorStop(1,'#9A6028');
+        ctx.fillStyle=lidG;ctx.beginPath();ctx.roundRect(jx-2,jy,jw+4,9,4);ctx.fill();
+        ctx.fillStyle='#7A4A1A';ctx.beginPath();ctx.ellipse(jx+jw*0.5,jy,4,2.5,0,0,Math.PI*2);ctx.fill();
+      } else if(item.id==='mixing_bowl'){
+        // Mint bowl + whisk, mirrors the room art
+        const cx=28, by=34, bw=34, bh=20;
+        const bg=ctx.createLinearGradient(cx-bw*0.5,0,cx+bw*0.5,0);
+        bg.addColorStop(0,'#7eccb8');bg.addColorStop(0.5,'#a7e3d2');bg.addColorStop(1,'#6bb9a4');
+        ctx.fillStyle=bg;ctx.beginPath();
+        ctx.moveTo(cx-bw*0.5,by);ctx.quadraticCurveTo(cx-bw*0.5,by+bh,cx,by+bh);
+        ctx.quadraticCurveTo(cx+bw*0.5,by+bh,cx+bw*0.5,by);ctx.closePath();ctx.fill();
+        ctx.fillStyle='#f3e3b8';ctx.beginPath();ctx.ellipse(cx,by,bw*0.5,bh*0.32,0,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle='#5ea892';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(cx,by,bw*0.5,bh*0.32,0,0,Math.PI*2);ctx.stroke();
+        // whisk
+        ctx.strokeStyle='#cfd6da';ctx.lineWidth=3;ctx.lineCap='round';
+        ctx.beginPath();ctx.moveTo(cx+8,by-2);ctx.lineTo(cx+14,by-18);ctx.stroke();
+        ctx.strokeStyle='#dfe5e8';ctx.lineWidth=1.4;
+        [-1,0,1].forEach(o=>{ctx.beginPath();ctx.ellipse(cx+8+o,by+2,3,5,o*0.3,0,Math.PI*2);ctx.stroke();});
+        // flour puff
+        ctx.fillStyle='rgba(255,255,255,0.7)';ctx.beginPath();ctx.arc(cx-6,by-12,3,0,Math.PI*2);ctx.fill();
+      } else if(item.id==='pancake_griddle'){
+        // Cast-iron griddle with a pancake stack + one flipping
+        const cx=28, gy=38, gw=38;
+        ctx.fillStyle='#3a3a40';ctx.beginPath();ctx.roundRect(cx-gw*0.5,gy-3,gw,8,3);ctx.fill();
+        ctx.fillStyle='#55555c';ctx.beginPath();ctx.ellipse(cx,gy-2,gw*0.46,3,0,0,Math.PI*2);ctx.fill();
+        // handle
+        ctx.strokeStyle='#6d4c2e';ctx.lineWidth=4;ctx.lineCap='round';
+        ctx.beginPath();ctx.moveTo(cx+gw*0.46,gy-1);ctx.lineTo(cx+gw*0.66,gy-1);ctx.stroke();
+        // resting stack
+        for(let s=0;s<2;s++){ctx.fillStyle=s%2?'#E3A24B':'#EBB45C';ctx.beginPath();ctx.ellipse(cx-7,gy-5-s*5,9,4,0,0,Math.PI*2);ctx.fill();}
+        ctx.fillStyle='#9A5B22';ctx.beginPath();ctx.arc(cx-7,gy-15,2,0,Math.PI*2);ctx.fill();
+        // flipping pancake mid-air
+        ctx.fillStyle='#EBB45C';ctx.beginPath();ctx.ellipse(cx+8,gy-20,9,3,0,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#C8853C';ctx.beginPath();ctx.ellipse(cx+8,gy-22,5,2,0,0,Math.PI*2);ctx.fill();
+      } else if(item.id==='juice_blender'){
+        // Blender: base + buttons + clear jug with fruity smoothie
+        const cx=28, baseB=48, jw=18, jh=24, jugTop=8;
+        // base
+        ctx.fillStyle='#dfe4e7';ctx.beginPath();
+        ctx.moveTo(cx-11,baseB);ctx.lineTo(cx-8,baseB-9);ctx.lineTo(cx+8,baseB-9);ctx.lineTo(cx+11,baseB);ctx.closePath();ctx.fill();
+        ctx.fillStyle='#FF6B9D';ctx.beginPath();ctx.arc(cx,baseB-4,2,0,Math.PI*2);ctx.fill();
+        // jug
+        ctx.fillStyle='rgba(225,240,248,0.45)';ctx.beginPath();ctx.roundRect(cx-jw*0.5,jugTop,jw,jh,3);ctx.fill();
+        // smoothie
+        ctx.save();ctx.beginPath();ctx.roundRect(cx-jw*0.5+1,jugTop+8,jw-2,jh-8,2);ctx.clip();
+        ctx.fillStyle='hsl(330,65%,64%)';ctx.fillRect(cx-jw*0.5,jugTop+8,jw,jh);
+        ['#FFD166','#FF6B6B','#9CCC65'].forEach((c,i)=>{ctx.fillStyle=c;ctx.beginPath();ctx.arc(cx-4+i*4,jugTop+16+(i%2)*4,2,0,Math.PI*2);ctx.fill();});
+        ctx.restore();
+        ctx.strokeStyle='rgba(150,180,200,0.6)';ctx.lineWidth=1.2;ctx.beginPath();ctx.roundRect(cx-jw*0.5,jugTop,jw,jh,3);ctx.stroke();
+        ctx.fillStyle='#aab2b8';ctx.beginPath();ctx.roundRect(cx-jw*0.55,jugTop-3,jw*1.1,4,2);ctx.fill();
+        ctx.fillStyle='rgba(255,255,255,0.4)';ctx.beginPath();ctx.roundRect(cx-jw*0.5+2,jugTop+2,3,jh*0.6,1);ctx.fill();
       }
     });
   });
@@ -6793,6 +7251,11 @@ function _buyFurniture(id){
 
 // ── Free-position furniture placement ──
 let _placingFurnitureId=null, _placingResidentId=null, _movingFurnitureId=null, _placeCursorX=null, _placeCursorY=null;
+// Mixing Bowl baking animation flags: _mixBowlActiveNext is set during the
+// resident pass; _mixBowlActive is the committed value the renderer reads.
+let _mixBowlActive=false, _mixBowlActiveNext=false;
+let _griddleActive=false, _griddleActiveNext=false;
+let _blenderActive=false, _blenderActiveNext=false;
 
 function _placeFurniture(id){
   const item=FURNITURE_CATALOGUE.find(f=>f.id===id);if(!item)return;
@@ -6871,7 +7334,11 @@ function _commitPlacement(nx,ny){
   // standing furniture (bed, sofa, table, rug…) stays in the floor zone.
   const _placingItem = _placingFurnitureId ? FURNITURE_CATALOGUE.find(f=>f.id===_placingFurnitureId) : null;
   const _hi = _placingItem && (_placingItem.slot==='wall' || _placingItem.slot==='table_top');
-  const cx = Math.max(0.13, Math.min(0.80, nx));
+  // Horizontal bounds are room-aware: the kitchen has a fridge on the right and
+  // a long counter, so items get a wider range than the living room.
+  const _xMin = state.currentRoom==='kitchen' ? 0.06 : 0.13;
+  const _xMax = state.currentRoom==='kitchen' ? 0.92 : 0.80;
+  const cx = Math.max(_xMin, Math.min(_xMax, nx));
   const cy = _hi ? Math.max(0.40, Math.min(0.86, ny))
                  : Math.max(0.60, Math.min(0.92, ny));
   if(_placingResidentId){
@@ -7055,7 +7522,8 @@ function _commitPlacement(nx,ny){
       // Store as 0-1 normalized AND pre-clamp to match _commitPlacement bounds
       const _it=_placingFurnitureId?FURNITURE_CATALOGUE.find(f=>f.id===_placingFurnitureId):null;
       const _hi=_it&&(_it.slot==='wall'||_it.slot==='table_top');
-      _placeCursorX = Math.max(0.06, Math.min(0.84, (ex-r.left)/r.width));
+      const _xMin=state.currentRoom==='kitchen'?0.06:0.06, _xMax=state.currentRoom==='kitchen'?0.92:0.84;
+      _placeCursorX = Math.max(_xMin, Math.min(_xMax, (ex-r.left)/r.width));
       _placeCursorY = _hi ? Math.max(0.40, Math.min(0.86, (ey-r.top)/r.height))
                           : Math.max(0.60, Math.min(0.92, (ey-r.top)/r.height));
     }
@@ -7070,7 +7538,8 @@ function _commitPlacement(nx,ny){
     if(t.clientX>=r.left&&t.clientX<=r.right&&t.clientY>=r.top&&t.clientY<=r.bottom){
       const _it=_placingFurnitureId?FURNITURE_CATALOGUE.find(f=>f.id===_placingFurnitureId):null;
       const _hi=_it&&(_it.slot==='wall'||_it.slot==='table_top');
-      _placeCursorX=Math.max(0.13,Math.min(0.80,(t.clientX-r.left)/r.width));
+      const _xMin=state.currentRoom==='kitchen'?0.06:0.13, _xMax=state.currentRoom==='kitchen'?0.92:0.80;
+      _placeCursorX=Math.max(_xMin,Math.min(_xMax,(t.clientX-r.left)/r.width));
       _placeCursorY=_hi ? Math.max(0.40,Math.min(0.86,(t.clientY-r.top)/r.height))
                         : Math.max(0.60,Math.min(0.92,(t.clientY-r.top)/r.height));
     }
