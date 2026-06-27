@@ -805,7 +805,7 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
         <div style="border:1.5px solid #E8D49A;border-radius:16px;padding:14px;margin-bottom:14px">
           <div style="text-align:center;background:#FBF3D9;color:#B8860B;font-size:11px;font-weight:900;padding:4px 10px;border-radius:20px;display:inline-block;margin-bottom:10px">⭐ PREMIUM UPGRADE</div>
           <div style="font-size:13px;font-weight:800;color:#2D1B00;text-align:center;margin-bottom:8px">Unlock the showstopper items:</div>
-          <div style="font-size:12px;color:#555;line-height:1.9">🍬 Candy Fountain &amp; future premium items<br>✨ Special animations and effects<br>👑 Support the app's development</div>
+          <div style="font-size:12px;color:#555;line-height:1.9">🍬 Candy Fountain<br>🔮 Magic Oven<br>🎂 Birthday Cake Station<br>🪙 700 bonus coins to open up the kitchen</div>
         </div>
         <button onclick="buyPremium()" style="width:100%;background:linear-gradient(135deg,#D4AF37,#B8860B);color:white;border:none;border-radius:16px;padding:14px;font-size:15px;font-weight:900;cursor:pointer">👑 Unlock Premium</button>
         <div style="margin-top:10px;font-size:10px;color:#BBB;text-align:center;line-height:1.5">Premium is a paid upgrade. A grown-up completes the purchase.</div>
@@ -1105,7 +1105,7 @@ let state = {
   spotsVisited:new Set(), avatar:'🐿️', name:'Squish Explorer',
   badges:new Set(), friendCode:'SQSH-'+(7000+Math.floor(Math.random()*2999)), soundEnabled:true, musicEnabled:true, tradeEnabled:true, dailyLimitEnabled:false, playTimeToday:0, lastLimitDay:'', parentPin:'0000',
   friendship:{}, lastDailyGift:null, dailyGiftDay:0, squishNames:{},
-  firstTime:true, xp:0, isPro:false, hasBonusPack:false, isPremium:false, starterPackClaimed:false,
+  firstTime:true, xp:0, isPro:false, hasBonusPack:false, isPremium:false, starterPackClaimed:false, premiumPackClaimed:false,
   coins:0, ownedFurniture:['rug_basic','table_basic','lamp_basic'], placedFurniture:[
     {id:'rug_basic',   x:0.42, y:0.88},
     {id:'lamp_basic',  x:0.18, y:0.84},
@@ -1156,6 +1156,7 @@ try {
       state.isPremium      = bool(parsed.isPremium, false);
       state.isPro          = state.hasBonusPack; // legacy alias kept in sync
       state.starterPackClaimed = bool(parsed.starterPackClaimed, false);
+      state.premiumPackClaimed = bool(parsed.premiumPackClaimed, false);
       state.soundEnabled   = bool(parsed.soundEnabled, true);
       state.musicEnabled   = bool(parsed.musicEnabled, true);
       state.tradeEnabled   = bool(parsed.tradeEnabled, true);
@@ -4834,7 +4835,7 @@ const FURNITURE_CATALOGUE = [
 
   // ═══ KITCHEN ITEMS (room:'kitchen') ═══
   // Ordered for the shop: free starters, then commons by price, then rare last.
-  {id:'cookie_jar',  name:'Cookie Jar',     icon:'🍪', cost:0,   rarity:'free',   theme:'Kitchen', slot:'table_top', desc:'Squishies gather round for a treat!', room:'kitchen'},
+  {id:'cookie_jar',  name:'Cookie Jar',     icon:'🍪', cost:0,   rarity:'free',   theme:'Kitchen', slot:'table_top', desc:'Squishies sneak a sweet treat!', room:'kitchen'},
   {id:'step_stool',  name:'Step Stool',      icon:'🪜', cost:0,  rarity:'free',   theme:'Kitchen', slot:'floor',     desc:'Squishies climb up to reach the counter!', room:'kitchen'},
   {id:'mixing_bowl', name:'Mixing Bowl & Whisk', icon:'🥣', cost:45, rarity:'common', theme:'Kitchen', slot:'table_top', desc:'Squishies hop up and bake!', room:'kitchen'},
   {id:'fruit_bowl',  name:'Fresh Fruit Bowl', icon:'🍓', cost:50,  rarity:'common', theme:'Kitchen', slot:'table_top', desc:'Squishies pick a fruit to nibble!', room:'kitchen'},
@@ -7981,7 +7982,7 @@ function _buildShopTab(el){
       : `<button onclick="openProModal()" style="background:white;border:none;border-radius:14px;padding:8px 14px;font-size:12px;font-weight:900;color:#7B1FA2;cursor:pointer;white-space:nowrap">Unlock</button>`;
     const proBannerText = hasBonusPack
       ? 'All exclusive furniture unlocked! Thanks for unlocking the Bonus Pack. ✨'
-      : 'Unlock all exclusive furniture, 1000 bonus coins, and exclusive content — free with a grown-up\'s help.';
+      : 'Unlock all exclusive furniture and 300 bonus coins — free with a grown-up\'s help.';
 
     html+=`</div>
     <div style="margin:0 14px 16px;background:linear-gradient(135deg,#9C27B0,#7B1FA2);border-radius:18px;padding:18px;display:flex;align-items:center;gap:14px">
@@ -8000,7 +8001,7 @@ function _buildShopTab(el){
       : `<button onclick="openPremiumModal()" style="background:white;border:none;border-radius:14px;padding:8px 14px;font-size:12px;font-weight:900;color:#B8860B;cursor:pointer;white-space:nowrap">Unlock</button>`;
     const premText = hasPrem
       ? 'All premium kitchen items unlocked! 👑'
-      : 'Unlock showstopper kitchen items like the Candy Fountain — a paid upgrade.';
+      : 'Unlock the Candy Fountain, Magic Oven & Birthday Cake — plus 700 bonus coins. A paid upgrade.';
     html+=`</div>
     <div style="margin:0 14px 16px;background:linear-gradient(135deg,#D4AF37,#B8860B);border-radius:18px;padding:18px;display:flex;align-items:center;gap:14px">
       <span style="font-size:36px">${hasPrem?'👑':'🍬'}</span>
@@ -11142,10 +11143,17 @@ function _grantPremium(){
   // Unlock all premium furniture
   const premItems = (FURNITURE_CATALOGUE||[]).filter(f=>f.premium).map(f=>f.id);
   premItems.forEach(id=>{ if(!state.ownedFurniture.includes(id)) state.ownedFurniture.push(id); });
+  // One-time premium bonus: coins to open up the rest of the kitchen + an XP
+  // boost. Guarded so it only ever grants once, even if _grantPremium re-runs.
+  if(!state.premiumPackClaimed){
+    state.premiumPackClaimed = true;
+    addCoins(700);
+    addXP(300, 'premium_pack');
+  }
   saveState();
   closePremiumModal();
   _triggerLevelUp({lvl:'👑', title:'Premium Unlocked!'});
-  setTimeout(()=>showToast('👑 Premium kitchen items unlocked!'),600);
+  setTimeout(()=>showToast('👑 +700🪙 · Premium kitchen items unlocked!'),600);
   // Rebuild the shop so the newly-unlocked items flip to "Place". The player is
   // in the shop when they unlock, so rebuild directly (the old borderBottom hex
   // check was unreliable — browsers normalize the color and it failed to match).
@@ -11206,13 +11214,13 @@ function _confirmProPurchase(){
   // One-time bonus coins on first unlock
   if(!state.starterPackClaimed){
     state.starterPackClaimed = true;
-    addCoins(1000);
+    addCoins(300);
     addXP(200, 'starter_pack');
   }
   saveState();
   closeProModal();
   _triggerLevelUp({lvl:'✨', title:'Bonus Pack Unlocked!'});
-  setTimeout(()=>showToast('🎁 +1000🪙 · All bonus furniture unlocked!'),600);
+  setTimeout(()=>showToast('🎁 +300🪙 · All bonus furniture unlocked!'),600);
   // Rebuild shop to reflect new state
   const content = document.getElementById('home-tab-content');
   if(content){ const tab=document.getElementById('home-tab-shop'); if(tab&&tab.style.borderBottom&&tab.style.borderBottom.includes('8b4513')) _buildShopTab(content); }
