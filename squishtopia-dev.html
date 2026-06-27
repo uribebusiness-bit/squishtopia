@@ -759,6 +759,34 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
   </div>
 </div>
 
+<!-- PREMIUM (paid) MODAL -->
+<div id="premium-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:350;display:none;align-items:center;justify-content:center;padding:20px">
+  <div style="background:white;border-radius:24px;max-width:340px;width:100%;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+    <div style="background:linear-gradient(135deg,#D4AF37,#B8860B);padding:24px 20px;text-align:center">
+      <div style="font-size:40px">👑</div>
+      <div style="font-size:22px;font-weight:900;color:white;margin-top:4px">Premium Kitchen</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.9);margin-top:4px">Paid upgrade · A grown-up purchases</div>
+    </div>
+    <div style="padding:20px">
+      <div id="premium-already" style="display:none;text-align:center;padding:10px 0 16px">
+        <div style="font-size:32px">✓</div>
+        <div style="font-size:15px;font-weight:900;color:#B8860B;margin-top:6px">Premium unlocked!</div>
+        <div style="font-size:12px;color:#888;margin-top:4px">All premium kitchen items are yours.</div>
+      </div>
+      <div id="premium-options">
+        <div style="border:1.5px solid #E8D49A;border-radius:16px;padding:14px;margin-bottom:14px">
+          <div style="text-align:center;background:#FBF3D9;color:#B8860B;font-size:11px;font-weight:900;padding:4px 10px;border-radius:20px;display:inline-block;margin-bottom:10px">⭐ PREMIUM UPGRADE</div>
+          <div style="font-size:13px;font-weight:800;color:#2D1B00;text-align:center;margin-bottom:8px">Unlock the showstopper items:</div>
+          <div style="font-size:12px;color:#555;line-height:1.9">🍬 Candy Fountain &amp; future premium items<br>✨ Special animations and effects<br>👑 Support the app's development</div>
+        </div>
+        <button onclick="buyPremium()" style="width:100%;background:linear-gradient(135deg,#D4AF37,#B8860B);color:white;border:none;border-radius:16px;padding:14px;font-size:15px;font-weight:900;cursor:pointer">👑 Unlock Premium</button>
+        <div style="margin-top:10px;font-size:10px;color:#BBB;text-align:center;line-height:1.5">Premium is a paid upgrade. A grown-up completes the purchase.</div>
+      </div>
+    </div>
+    <button onclick="closePremiumModal()" style="width:calc(100% - 40px);margin:0 20px 20px;background:#F5F5F5;border:none;border-radius:14px;padding:11px;font-size:13px;font-weight:700;color:#888;cursor:pointer">Maybe later</button>
+  </div>
+</div>
+
 <!-- TOAST -->
 
 <div class="toast" id="toast"></div>
@@ -1049,7 +1077,7 @@ let state = {
   spotsVisited:new Set(), avatar:'🐿️', name:'Squish Explorer',
   badges:new Set(), friendCode:'SQSH-'+(7000+Math.floor(Math.random()*2999)), soundEnabled:true, musicEnabled:true, tradeEnabled:true, dailyLimitEnabled:false, playTimeToday:0, lastLimitDay:'', parentPin:'0000',
   friendship:{}, lastDailyGift:null, dailyGiftDay:0,
-  firstTime:true, xp:0, isPro:false, starterPackClaimed:false,
+  firstTime:true, xp:0, isPro:false, hasBonusPack:false, isPremium:false, starterPackClaimed:false,
   coins:0, ownedFurniture:['rug_basic','table_basic','lamp_basic'], placedFurniture:[
     {id:'rug_basic',   x:0.42, y:0.88},
     {id:'lamp_basic',  x:0.18, y:0.84},
@@ -1091,7 +1119,13 @@ try {
       state.coins          = num(parsed.coins, 0);
       state.dailyGiftDay   = num(parsed.dailyGiftDay, 0);
       state.playTimeToday  = num(parsed.playTimeToday, 0);
-      state.isPro          = bool(parsed.isPro, false);
+      // Bonus Pack (free) and Premium (paid) flags. Migrate the OLD single
+      // `isPro` flag: anyone who unlocked the free Bonus Pack under the old name
+      // keeps it as hasBonusPack, so no tester loses their unlock.
+      const _oldIsPro      = bool(parsed.isPro, false);
+      state.hasBonusPack   = bool(parsed.hasBonusPack, _oldIsPro);
+      state.isPremium      = bool(parsed.isPremium, false);
+      state.isPro          = state.hasBonusPack; // legacy alias kept in sync
       state.starterPackClaimed = bool(parsed.starterPackClaimed, false);
       state.soundEnabled   = bool(parsed.soundEnabled, true);
       state.musicEnabled   = bool(parsed.musicEnabled, true);
@@ -1150,7 +1184,7 @@ try {
       // is defined later in the file, so we use an explicit id set here.
       // Keep this set in sync as kitchen items are added.
       try{
-        const KITCHEN_IDS=new Set(['cookie_jar','mixing_bowl','step_stool','pancake_griddle','juice_blender','tea_set','toaster','fruit_bowl']);
+        const KITCHEN_IDS=new Set(['cookie_jar','mixing_bowl','step_stool','pancake_griddle','juice_blender','tea_set','toaster','fruit_bowl','candy_fountain','magic_oven']);
         if(Array.isArray(state.placedFurniture)){
           const _strays=state.placedFurniture.filter(p=>KITCHEN_IDS.has(p.id));
           if(_strays.length){
@@ -4714,11 +4748,11 @@ const FURNITURE_CATALOGUE = [
   {id:'sofa_pink',   name:'Pink Sofa',      icon:'🛋', cost:160, rarity:'rare',   theme:'Candy',  slot:'left',      desc:'Perfectly squishy cushions'},
   // Pro-only items
   {id:'radio',       name:'Boom Box',       icon:'📻', cost:120, rarity:'rare',  theme:'Music',   slot:'table_top', desc:'Turn it on — everyone dances!'},
-  {id:'arcade_cab',  name:'Arcade Cabinet', icon:'🕹', cost:0,   rarity:'pro',    theme:'Arcade', slot:'wall',      desc:'Plays Freeze Time!', pro:true},
-  {id:'starbed',     name:'Galaxy Bed',     icon:'🌌', cost:0,   rarity:'pro',    theme:'Space',  slot:'left',      desc:'Sleep among the stars',   pro:true},
-  {id:'candy_sofa',  name:'Candy Couch',    icon:'🍭', cost:0,   rarity:'pro',    theme:'Candy',  slot:'left',      desc:'Gummy cushions, candy-striped',       pro:true},
-  {id:'trophy_wall', name:'Trophy Wall',    icon:'🏆', cost:0,   rarity:'pro',    theme:'Forest', slot:'wall',      desc:'Show off your rarest',    pro:true},
-  {id:'pirate_chest',name:'Pirate Chest',   icon:'🧰', cost:0,   rarity:'pro',    theme:'Pirate', slot:'corner',    desc:'Full of treasure',        pro:true},
+  {id:'arcade_cab',  name:'Arcade Cabinet', icon:'🕹', cost:0,   rarity:'bonus',    theme:'Arcade', slot:'wall',      desc:'Plays Freeze Time!', bonus:true},
+  {id:'starbed',     name:'Galaxy Bed',     icon:'🌌', cost:0,   rarity:'bonus',    theme:'Space',  slot:'left',      desc:'Sleep among the stars',   bonus:true},
+  {id:'candy_sofa',  name:'Candy Couch',    icon:'🍭', cost:0,   rarity:'bonus',    theme:'Candy',  slot:'left',      desc:'Gummy cushions, candy-striped',       bonus:true},
+  {id:'trophy_wall', name:'Trophy Wall',    icon:'🏆', cost:0,   rarity:'bonus',    theme:'Forest', slot:'wall',      desc:'Show off your rarest',    bonus:true},
+  {id:'pirate_chest',name:'Pirate Chest',   icon:'🧰', cost:0,   rarity:'bonus',    theme:'Pirate', slot:'corner',    desc:'Full of treasure',        bonus:true},
 
   // ═══ KITCHEN ITEMS (room:'kitchen') ═══
   // Ordered for the shop: free starters, then commons by price, then rare last.
@@ -4730,6 +4764,9 @@ const FURNITURE_CATALOGUE = [
   {id:'juice_blender', name:'Juice Bar Blender', icon:'🥤', cost:70, rarity:'common', theme:'Kitchen', slot:'table_top', desc:'Squishies blend fruity smoothies!', room:'kitchen'},
   {id:'pancake_griddle', name:'Pancake Griddle', icon:'🥞', cost:90, rarity:'common', theme:'Kitchen', slot:'table_top', desc:'Watch the pancakes flip!', room:'kitchen'},
   {id:'tea_set',     name:'Cozy Tea Set',    icon:'🫖', cost:120, rarity:'rare',  theme:'Kitchen', slot:'table_top', desc:'Squishies pretend to sip tea!', room:'kitchen'},
+  // ─── PREMIUM (paid) kitchen showstoppers ───
+  {id:'candy_fountain', name:'Candy Fountain', icon:'🍬', cost:0, rarity:'premium', theme:'Kitchen', slot:'table_top', desc:'Squishies gather at the flowing candy fountain!', room:'kitchen', premium:true},
+  {id:'magic_oven', name:'Magic Oven', icon:'🔮', cost:0, rarity:'premium', theme:'Kitchen', slot:'table_top', desc:'Watch treats magically bake inside!', room:'kitchen', premium:true},
 ];
 
 // ── HOME ROOM RENDERER ──
@@ -4916,6 +4953,7 @@ function _paintRoom(ctx,W,H,t){
     _teaSetActiveNext=false;
     _toasterActiveNext=false;
     _fruitBowlActiveNext=false;
+    _magicOvenActiveNext=false;
     residents.forEach(function(r){
       _guardedDraw(ctx, function(){
         const ai=_getResAI(r.id,r.x,r.y);
@@ -4971,6 +5009,7 @@ function _paintRoom(ctx,W,H,t){
   _teaSetActive=_teaSetActiveNext;
   _toasterActive=_toasterActiveNext;
   _fruitBowlActive=_fruitBowlActiveNext;
+  _magicOvenActive=_magicOvenActiveNext;
   if(_teaPourTimer>0) _teaPourTimer--;
 
   // ── Squirrel movement ──
@@ -6606,77 +6645,321 @@ function _drawFurnitureInRoom(ctx,W,H,t){
 
     // ── KITCHEN: Fresh Fruit Bowl ──
     if(item.id==='fruit_bowl'){
-      const bw=W*0.11, bh=H*0.05;
+      const bw=W*0.12, bh=H*0.055;
       const cx=px, baseY=py;
       const active=!!_fruitBowlActive;
       ctx.save();
       // Contact shadow
       const sh=ctx.createRadialGradient(cx,baseY,1,cx,baseY,bw*0.6);
-      sh.addColorStop(0,'rgba(0,0,0,0.16)');sh.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.fillStyle=sh;ctx.beginPath();ctx.ellipse(cx,baseY,bw*0.55,H*0.012,0,0,Math.PI*2);ctx.fill();
+      sh.addColorStop(0,'rgba(0,0,0,0.18)');sh.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=sh;ctx.beginPath();ctx.ellipse(cx,baseY,bw*0.55,H*0.013,0,0,Math.PI*2);ctx.fill();
 
-      // Fruits sitting in the bowl (drawn first so the bowl rim overlaps them).
-      // Small helper to draw each fruit type.
-      const drawFruit=(fx,fy,type,lift)=>{
-        const yy=fy-lift;
-        if(type==='straw'){ // strawberry
-          ctx.fillStyle='#E8324A';ctx.beginPath();ctx.moveTo(fx,yy+bh*0.42);
-          ctx.quadraticCurveTo(fx-bw*0.10,yy-bh*0.05,fx,yy-bh*0.18);
-          ctx.quadraticCurveTo(fx+bw*0.10,yy-bh*0.05,fx,yy+bh*0.42);ctx.fill();
-          ctx.fillStyle='#3FA34D';ctx.beginPath();ctx.ellipse(fx,yy-bh*0.16,bw*0.05,bh*0.12,0,0,Math.PI*2);ctx.fill();
-          ctx.fillStyle='rgba(255,220,120,0.9)';
-          for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(fx-bw*0.03+i*bw*0.03,yy+bh*0.05+(i%2)*bh*0.08,0.7,0,Math.PI*2);ctx.fill();}
-        } else if(type==='orange'){
-          ctx.fillStyle='#FF9F1C';ctx.beginPath();ctx.arc(fx,yy,bw*0.085,0,Math.PI*2);ctx.fill();
-          ctx.fillStyle='rgba(255,255,255,0.25)';ctx.beginPath();ctx.arc(fx-bw*0.03,yy-bh*0.10,bw*0.025,0,Math.PI*2);ctx.fill();
-          ctx.fillStyle='#3FA34D';ctx.beginPath();ctx.ellipse(fx,yy-bw*0.085,bw*0.03,bh*0.08,0,0,Math.PI*2);ctx.fill();
-        } else if(type==='grape'){
-          ctx.fillStyle='#9B5DE5';
-          [[0,0],[-0.05,0.02],[0.05,0.02],[-0.025,0.10],[0.025,0.10],[0,0.18]].forEach(o=>{
-            ctx.beginPath();ctx.arc(fx+o[0]*bw,yy+o[1]*bw,bw*0.035,0,Math.PI*2);ctx.fill();
-          });
-        } else if(type==='banana'){
-          ctx.strokeStyle='#FFD23F';ctx.lineWidth=bw*0.05;ctx.lineCap='round';
-          ctx.beginPath();ctx.arc(fx,yy+bh*0.5,bw*0.10,Math.PI*1.15,Math.PI*1.85);ctx.stroke();
-        }
-      };
-      // Which fruit is being "picked" (lifted) when active — cycles slowly.
-      const pickIdx = active ? Math.floor((t*0.012)%4) : -1;
-      const pickLift = active ? (Math.sin(t*0.12)*0.5+0.5)*bh*0.7 : 0;
-      const fruits=[
-        {dx:-0.045, type:'straw'},
-        {dx: 0.02,  type:'orange'},
-        {dx:-0.005, type:'grape'},
-        {dx: 0.05,  type:'banana'},
-      ];
-      fruits.forEach((f,i)=>{
-        const lift = (i===pickIdx) ? pickLift : 0;
-        drawFruit(cx+f.dx*1.6, baseY-bh*0.55, f.type, lift);
-      });
+      // Render mirrors the shop icon (which reads correctly), scaled up. Bowl
+      // is a single deep wooden piece; fruit sits just above the rim with bases
+      // tucked behind it, so it looks nestled IN the bowl — not floating.
+      // Scale factor: shop icon used ~15px half-width; here it's bw*0.5.
+      const S=bw/30;              // shop icon ≈30px wide → scale to bw
+      const oy=baseY-bh*0.2;      // bowl baseline in the room
+      const rimY=oy-6*S;          // rim line (matches icon's baseY-6)
 
-      // Bowl (wooden, rounded) — front half drawn over the fruit bases
-      const bowlG=ctx.createLinearGradient(cx,baseY-bh,cx,baseY+bh*0.4);
+      const pickIdx = active ? Math.floor((t*0.012)%3) : -1;
+      const pickLift = active ? (Math.sin(t*0.12)*0.5+0.5)*8*S : 0;
+
+      // Fruit (drawn FIRST, behind the bowl front). Positions copied from the
+      // shop icon, scaled by S and lifted to a per-fruit pick when active.
+      // strawberry (left)
+      let lift = (pickIdx===0)?pickLift:0;
+      ctx.fillStyle='#E8324A';ctx.beginPath();
+      ctx.moveTo(cx-8*S, rimY-2*S-lift);
+      ctx.quadraticCurveTo(cx-13*S, rimY-10*S-lift, cx-8*S, rimY-13*S-lift);
+      ctx.quadraticCurveTo(cx-3*S, rimY-10*S-lift, cx-8*S, rimY-2*S-lift);ctx.fill();
+      ctx.fillStyle='#3FA34D';ctx.beginPath();ctx.ellipse(cx-8*S, rimY-12*S-lift, 2*S, 3*S, 0,0,Math.PI*2);ctx.fill();
+      // orange (center)
+      lift = (pickIdx===1)?pickLift:0;
+      ctx.fillStyle='#FF9F1C';ctx.beginPath();ctx.arc(cx+1*S, rimY-6*S-lift, 5.5*S, 0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,0.3)';ctx.beginPath();ctx.arc(cx-1*S, rimY-8*S-lift, 1.8*S, 0,Math.PI*2);ctx.fill();
+      // grapes (right)
+      lift = (pickIdx===2)?pickLift:0;
+      ctx.fillStyle='#9B5DE5';
+      [[8,-9],[11,-7],[8,-5],[10,-3],[9,-1]].forEach(o=>{ctx.beginPath();ctx.arc(cx+o[0]*S, rimY+o[1]*S-lift, 2.4*S, 0,Math.PI*2);ctx.fill();});
+
+      // Bowl (single deep wooden piece, drawn OVER the fruit bases)
+      const bowlG=ctx.createLinearGradient(cx,rimY,cx,oy+8*S);
       bowlG.addColorStop(0,'#C98A5E');bowlG.addColorStop(1,'#9C6239');
       ctx.fillStyle=bowlG;
       ctx.beginPath();
-      ctx.moveTo(cx-bw*0.5, baseY-bh*0.35);
-      ctx.quadraticCurveTo(cx, baseY+bh*0.9, cx+bw*0.5, baseY-bh*0.35);
-      ctx.quadraticCurveTo(cx, baseY-bh*0.05, cx-bw*0.5, baseY-bh*0.35);
-      ctx.fill();
-      // Rim highlight
-      ctx.strokeStyle='rgba(255,240,210,0.5)';ctx.lineWidth=1.5;
-      ctx.beginPath();ctx.moveTo(cx-bw*0.5,baseY-bh*0.35);
-      ctx.quadraticCurveTo(cx,baseY-bh*0.05,cx+bw*0.5,baseY-bh*0.35);ctx.stroke();
+      ctx.moveTo(cx-15*S, rimY);
+      ctx.quadraticCurveTo(cx, oy+13*S, cx+15*S, rimY);
+      ctx.quadraticCurveTo(cx, rimY+5*S, cx-15*S, rimY);ctx.fill();
+      // inner rim highlight
+      ctx.strokeStyle='rgba(255,240,210,0.55)';ctx.lineWidth=1.4;
+      ctx.beginPath();ctx.moveTo(cx-15*S, rimY);ctx.quadraticCurveTo(cx, rimY+5*S, cx+15*S, rimY);ctx.stroke();
+      ctx.strokeStyle='#A86A3E';ctx.lineWidth=2*S;
+      ctx.beginPath();ctx.moveTo(cx-15*S, rimY);ctx.quadraticCurveTo(cx, oy+13*S, cx+15*S, rimY);ctx.stroke();
+
       // Nibble sparkle when a squishy is eating
-      if(active && pickLift>bh*0.5){
+      if(active && pickLift>4*S){
         ctx.fillStyle='rgba(255,255,255,0.9)';
         ctx.font=`${bw*0.16}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText('✨',cx+bw*0.4,baseY-bh*1.2+Math.sin(t*0.18)*2);
+        ctx.fillText('✨',cx+bw*0.42,rimY-bh*0.6+Math.sin(t*0.18)*2);
       }
       ctx.restore();
       if(_movingFurnitureId===p.id||_placingFurnitureId===p.id){
         ctx.save();ctx.strokeStyle='#FFD166';ctx.lineWidth=2;ctx.setLineDash([4,3]);
-        ctx.beginPath();ctx.roundRect(cx-bw*0.6,baseY-bh*2,bw*1.2,bh*3,4);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+        ctx.beginPath();ctx.roundRect(cx-bw*0.6,rimY-bh*0.8,bw*1.2,bh*2.2,4);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+      }
+      return;
+    }
+
+    // ── KITCHEN: Candy Fountain (PREMIUM) ──
+    if(item.id==='candy_fountain'){
+      const fw=W*0.13, fh=H*0.20;
+      const cx=px, baseY=py;
+      ctx.save();
+      // Contact shadow
+      const sh=ctx.createRadialGradient(cx,baseY,1,cx,baseY,fw*0.6);
+      sh.addColorStop(0,'rgba(0,0,0,0.20)');sh.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=sh;ctx.beginPath();ctx.ellipse(cx,baseY,fw*0.55,H*0.016,0,0,Math.PI*2);ctx.fill();
+
+      // Candy color cycles slowly (pink → purple → gold → mint), giving it a
+      // magical premium shimmer that the coin items don't have.
+      const hue=(t*0.4)%360;
+      const candyA=`hsl(${hue},85%,62%)`;
+      const candyB=`hsl(${(hue+40)%360},85%,68%)`;
+
+      // --- Basin (bottom bowl that catches the candy) ---
+      const basinY=baseY-fh*0.06, basinW=fw*0.5;
+      const basinG=ctx.createLinearGradient(cx,basinY-fh*0.05,cx,basinY+fh*0.05);
+      basinG.addColorStop(0,'#FFF3FA');basinG.addColorStop(1,'#E8C8DE');
+      ctx.fillStyle=basinG;
+      ctx.beginPath();ctx.ellipse(cx,basinY,basinW,fh*0.05,0,0,Math.PI*2);ctx.fill();
+      // candy pooled in basin (cycling color, gently rippling)
+      ctx.fillStyle=candyA;
+      ctx.beginPath();ctx.ellipse(cx,basinY,basinW*0.82,fh*0.038+Math.sin(t*0.1)*1,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,0.35)';
+      ctx.beginPath();ctx.ellipse(cx-basinW*0.25,basinY-fh*0.01,basinW*0.2,fh*0.012,0,0,Math.PI*2);ctx.fill();
+      // little candy pieces nestled in the basin
+      const basinHues=[330,50,280,160];
+      for(let k=0;k<5;k++){
+        const bx=cx+(k-2)*basinW*0.32;
+        const by=basinY-fh*0.005+Math.sin(t*0.08+k)*0.6;
+        ctx.fillStyle=`hsl(${basinHues[k%basinHues.length]},80%,60%)`;
+        ctx.beginPath();ctx.arc(bx,by,fw*0.022,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='rgba(255,255,255,0.55)';
+        ctx.beginPath();ctx.arc(bx-fw*0.006,by-fw*0.006,fw*0.007,0,Math.PI*2);ctx.fill();
+      }
+
+      // --- Central column ---
+      const colX=cx, colTop=baseY-fh;
+      const colG=ctx.createLinearGradient(colX-fw*0.04,0,colX+fw*0.04,0);
+      colG.addColorStop(0,'#D9A6C9');colG.addColorStop(0.5,'#F6E0EF');colG.addColorStop(1,'#D9A6C9');
+      ctx.fillStyle=colG;
+      ctx.fillRect(colX-fw*0.035, colTop+fh*0.10, fw*0.07, fh*0.84);
+
+      // --- Three tiers (from largest at bottom to smallest at top) ---
+      const tiers=[
+        {y:baseY-fh*0.30, w:fw*0.42},
+        {y:baseY-fh*0.55, w:fw*0.30},
+        {y:baseY-fh*0.78, w:fw*0.18},
+      ];
+      // Tumbling CANDY pieces falling between tiers (not smooth liquid). Each
+      // edge drops a little stream of round wrapped candies in varied colors,
+      // so it reads clearly as candy rather than flowing syrup.
+      const candyHues=[330, 50, 280, 160, 10]; // pink, gold, purple, mint, red
+      tiers.forEach((tr,i)=>{
+        const topY = i===0 ? basinY : tiers[i-1].y;
+        for(let s=-1;s<=1;s+=2){
+          const sx=cx+s*tr.w*0.82;
+          // 3 candies per edge, staggered along the fall, looping downward
+          for(let k=0;k<3;k++){
+            const prog=((t*0.02)+k/3)%1; // 0 (at tier) → 1 (at level below)
+            const py2=tr.y+(topY-tr.y)*prog;
+            const px2=sx+s*Math.sin(prog*3)*1.5;
+            const hue=candyHues[(i*3+k+(s>0?1:0))%candyHues.length];
+            const r=fw*0.026;
+            ctx.fillStyle=`hsl(${hue},80%,62%)`;
+            ctx.beginPath();ctx.arc(px2,py2,r,0,Math.PI*2);ctx.fill();
+            // candy wrapper twist-ends (tiny triangles) so it looks wrapped
+            ctx.fillStyle=`hsl(${hue},80%,72%)`;
+            ctx.beginPath();ctx.moveTo(px2-r*1.6,py2);ctx.lineTo(px2-r*0.7,py2-r*0.5);ctx.lineTo(px2-r*0.7,py2+r*0.5);ctx.closePath();ctx.fill();
+            ctx.beginPath();ctx.moveTo(px2+r*1.6,py2);ctx.lineTo(px2+r*0.7,py2-r*0.5);ctx.lineTo(px2+r*0.7,py2+r*0.5);ctx.closePath();ctx.fill();
+            // shine dot
+            ctx.fillStyle='rgba(255,255,255,0.6)';
+            ctx.beginPath();ctx.arc(px2-r*0.3,py2-r*0.3,r*0.3,0,Math.PI*2);ctx.fill();
+          }
+        }
+      });
+      // Tier bowls
+      tiers.forEach((tr)=>{
+        // bowl underside
+        ctx.fillStyle='#E8C8DE';
+        ctx.beginPath();ctx.ellipse(cx,tr.y+fh*0.012,tr.w,fh*0.022,0,0,Math.PI*2);ctx.fill();
+        // candy top surface (cycling color)
+        ctx.fillStyle=candyA;
+        ctx.beginPath();ctx.ellipse(cx,tr.y,tr.w,fh*0.025,0,0,Math.PI*2);ctx.fill();
+        // rim highlight
+        ctx.strokeStyle='rgba(255,255,255,0.6)';ctx.lineWidth=1.2;
+        ctx.beginPath();ctx.ellipse(cx,tr.y-fh*0.004,tr.w*0.92,fh*0.02,0,Math.PI,Math.PI*2);ctx.stroke();
+      });
+
+      // --- Top finial (a candy drop) ---
+      ctx.fillStyle=candyB;
+      ctx.beginPath();ctx.arc(cx,baseY-fh*0.84,fw*0.05,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,0.7)';
+      ctx.beginPath();ctx.arc(cx-fw*0.015,baseY-fh*0.86,fw*0.018,0,Math.PI*2);ctx.fill();
+
+      // --- Sparkles (premium shimmer, always on) ---
+      for(let i=0;i<4;i++){
+        const ang=t*0.05+i*Math.PI*0.5;
+        const sx=cx+Math.cos(ang)*fw*0.55;
+        const sy=baseY-fh*0.5+Math.sin(ang)*fh*0.4;
+        const tw=(Math.sin(t*0.2+i)*0.5+0.5);
+        ctx.fillStyle=`rgba(255,255,210,${0.3+tw*0.6})`;
+        ctx.font=`${fw*0.12+tw*fw*0.06}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('✨',sx,sy);
+      }
+      ctx.restore();
+      if(_movingFurnitureId===p.id||_placingFurnitureId===p.id){
+        ctx.save();ctx.strokeStyle='#D4AF37';ctx.lineWidth=2.5;ctx.setLineDash([4,3]);
+        ctx.beginPath();ctx.roundRect(cx-fw*0.6,baseY-fh-fh*0.05,fw*1.2,fh*1.1,4);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+      }
+      return;
+    }
+
+    // ── KITCHEN: Magic Oven (PREMIUM) ──
+    if(item.id==='magic_oven'){
+      const ow=W*0.15, oh=H*0.155;          // bigger — a premium centerpiece
+      const cx=px, baseY=py;
+      const ox=cx-ow*0.5, oy=baseY-oh;
+      const active=!!_magicOvenActive;
+      // Idle "alive" intensity vs active burst. The oven ALWAYS glows and
+      // sparkles gently (it's magic!), and ramps UP when a squishy uses it.
+      const intensity = active ? 1 : 0.55;
+      const colSpeed  = active ? 0.6 : 0.18;
+      ctx.save();
+
+      // Magical AURA behind the oven — soft pulsing halo so it reads premium
+      // from across the room even when idle.
+      const hueBase=(t*colSpeed)%360;
+      const auraPulse=0.5+0.5*Math.sin(t*0.06);
+      const aura=ctx.createRadialGradient(cx,oy+oh*0.5,ow*0.2,cx,oy+oh*0.5,ow*0.95);
+      aura.addColorStop(0,`hsla(${hueBase},90%,70%,${(0.10+intensity*0.18)*(0.7+auraPulse*0.3)})`);
+      aura.addColorStop(1,'hsla(280,90%,60%,0)');
+      ctx.fillStyle=aura;
+      ctx.beginPath();ctx.ellipse(cx,oy+oh*0.5,ow*0.95,oh*0.7,0,0,Math.PI*2);ctx.fill();
+
+      // Contact shadow
+      const sh=ctx.createRadialGradient(cx,baseY,1,cx,baseY,ow*0.6);
+      sh.addColorStop(0,'rgba(0,0,0,0.22)');sh.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=sh;ctx.beginPath();ctx.ellipse(cx,baseY,ow*0.5,H*0.014,0,0,Math.PI*2);ctx.fill();
+
+      // Ornate gold feet (premium detail)
+      ctx.fillStyle='#D4AF37';
+      [0.10,0.90].forEach(fx=>{
+        ctx.beginPath();ctx.roundRect(ox+ow*fx-ow*0.03, baseY-oh*0.05, ow*0.06, oh*0.06, 2);ctx.fill();
+      });
+
+      // Oven body — deep teal with a magical sheen + gold trim
+      const bodyG=ctx.createLinearGradient(ox,oy,ox,baseY);
+      bodyG.addColorStop(0,'#3E5C76');bodyG.addColorStop(0.5,'#33506B');bodyG.addColorStop(1,'#243A52');
+      ctx.fillStyle=bodyG;
+      ctx.beginPath();ctx.roundRect(ox,oy,ow,oh,[ow*0.10,ow*0.10,ow*0.05,ow*0.05]);ctx.fill();
+      // gold trim outline
+      ctx.strokeStyle='#D4AF37';ctx.lineWidth=ow*0.018;
+      ctx.beginPath();ctx.roundRect(ox+ow*0.01,oy+ow*0.01,ow*0.98,oh*0.98,[ow*0.09,ow*0.09,ow*0.04,ow*0.04]);ctx.stroke();
+
+      // Top control panel with glowing dials (always softly lit)
+      ctx.fillStyle='#1E2F40';
+      ctx.beginPath();ctx.roundRect(ox+ow*0.08,oy+oh*0.05,ow*0.84,oh*0.14,3);ctx.fill();
+      for(let i=0;i<3;i++){
+        const glow=0.4+0.5*(Math.sin(t*0.12*(active?1.6:1)+i)*0.5+0.5)*intensity;
+        ctx.fillStyle=`hsla(${(hueBase+i*40)%360},95%,70%,${glow})`;
+        ctx.beginPath();ctx.arc(ox+ow*0.25+i*ow*0.25, oy+oh*0.12, ow*0.035, 0, Math.PI*2);ctx.fill();
+        // tiny dial shine
+        ctx.fillStyle='rgba(255,255,255,0.5)';
+        ctx.beginPath();ctx.arc(ox+ow*0.25+i*ow*0.25-ow*0.012, oy+oh*0.11, ow*0.01, 0, Math.PI*2);ctx.fill();
+      }
+
+      // Oven window
+      const winX=ox+ow*0.13, winY=oy+oh*0.26, winW=ow*0.74, winH=oh*0.52;
+      // gold window frame
+      ctx.fillStyle='#B8860B';
+      ctx.beginPath();ctx.roundRect(winX-3,winY-3,winW+6,winH+6,[ow*0.06]);ctx.fill();
+      ctx.fillStyle='#1E2F40';
+      ctx.beginPath();ctx.roundRect(winX-1,winY-1,winW+2,winH+2,[ow*0.05]);ctx.fill();
+      // inside magical glow — ALWAYS lit, brighter when active
+      const insideG=ctx.createRadialGradient(cx,winY+winH*0.62,2,cx,winY+winH*0.62,winW*0.75);
+      insideG.addColorStop(0,`hsl(${hueBase},90%,${60+intensity*15}%)`);
+      insideG.addColorStop(0.55,`hsl(${(hueBase+35)%360},80%,${42+intensity*10}%)`);
+      insideG.addColorStop(1,'#2A1838');
+      ctx.fillStyle=insideG;
+      ctx.beginPath();ctx.roundRect(winX,winY,winW,winH,[ow*0.045]);ctx.fill();
+
+      // The magically baking treat — cycles cupcake → cookie → cake, conjuring
+      // up out of swirling magic. Visible even idle (gently), lively when active.
+      const treatCx=cx, treatCy=winY+winH*0.60;
+      const cyc=((t*(active?0.012:0.005))%3);
+      const treatIdx=Math.floor(cyc);
+      const phase=cyc-treatIdx;
+      const rise=Math.sin(phase*Math.PI)*oh*0.07;
+      const ty2=treatCy-rise;
+      const treatScale=0.85+0.15*Math.sin(phase*Math.PI);
+      ctx.save();
+      ctx.globalAlpha=0.55+0.45*Math.sin(phase*Math.PI);
+      ctx.translate(treatCx,ty2);ctx.scale(treatScale,treatScale);ctx.translate(-treatCx,-ty2);
+      if(treatIdx===0){ // cupcake
+        ctx.fillStyle='#F4C9A8';ctx.beginPath();ctx.moveTo(treatCx-ow*0.09,ty2);ctx.lineTo(treatCx+ow*0.09,ty2);ctx.lineTo(treatCx+ow*0.06,ty2+oh*0.09);ctx.lineTo(treatCx-ow*0.06,ty2+oh*0.09);ctx.closePath();ctx.fill();
+        ctx.fillStyle='#FF8FB0';ctx.beginPath();ctx.arc(treatCx,ty2-oh*0.005,ow*0.09,Math.PI,0);ctx.fill();
+        ctx.fillStyle='#E8324A';ctx.beginPath();ctx.arc(treatCx,ty2-oh*0.05,ow*0.022,0,Math.PI*2);ctx.fill();
+      } else if(treatIdx===1){ // cookie
+        ctx.fillStyle='#D69A52';ctx.beginPath();ctx.arc(treatCx,ty2,ow*0.10,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#6B4423';
+        [[-0.04,-0.02],[0.03,0.01],[-0.01,0.04],[0.05,-0.03]].forEach(o=>{ctx.beginPath();ctx.arc(treatCx+o[0]*ow,ty2+o[1]*ow*2,ow*0.014,0,Math.PI*2);ctx.fill();});
+      } else { // cake slice
+        ctx.fillStyle='#FFF0F5';ctx.beginPath();ctx.moveTo(treatCx-ow*0.09,ty2+oh*0.05);ctx.lineTo(treatCx,ty2-oh*0.06);ctx.lineTo(treatCx+ow*0.09,ty2+oh*0.05);ctx.closePath();ctx.fill();
+        ctx.fillStyle='#FF8FB0';ctx.fillRect(treatCx-ow*0.09,ty2+oh*0.015,ow*0.18,oh*0.018);
+        ctx.fillStyle='#E8324A';ctx.beginPath();ctx.arc(treatCx,ty2-oh*0.035,ow*0.02,0,Math.PI*2);ctx.fill();
+      }
+      ctx.restore();
+
+      // Swirling sparkles inside the window — always a few, more when active
+      const sparkCount=active?4:2;
+      for(let i=0;i<sparkCount;i++){
+        const ang=t*0.06+i*(Math.PI*2/sparkCount);
+        const spx=cx+Math.cos(ang)*winW*0.32;
+        const spy=winY+winH*0.45+Math.sin(ang)*winH*0.30;
+        const tw=(Math.sin(t*0.2+i)*0.5+0.5);
+        ctx.fillStyle=`rgba(255,255,255,${0.35+tw*0.55})`;
+        ctx.font=`${ow*0.085+tw*ow*0.05}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('✨',spx,spy);
+      }
+      // window glass reflection
+      ctx.fillStyle='rgba(255,255,255,0.12)';
+      ctx.beginPath();ctx.roundRect(winX+winW*0.08,winY+winH*0.06,winW*0.26,winH*0.5,4);ctx.fill();
+
+      // gold handle bar below window
+      ctx.strokeStyle='#D4AF37';ctx.lineWidth=ow*0.045;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(ox+ow*0.18,baseY-oh*0.07);ctx.lineTo(ox+ow*0.82,baseY-oh*0.07);ctx.stroke();
+      ctx.strokeStyle='rgba(255,245,200,0.6)';ctx.lineWidth=ow*0.015;
+      ctx.beginPath();ctx.moveTo(ox+ow*0.18,baseY-oh*0.075);ctx.lineTo(ox+ow*0.82,baseY-oh*0.075);ctx.stroke();
+
+      // Floating sparkles AROUND the oven (the magic spilling out) — always on,
+      // more numerous and brighter when active.
+      const outCount=active?4:2;
+      for(let i=0;i<outCount;i++){
+        const ang=t*0.04+i*(Math.PI*2/outCount);
+        const rad=ow*(0.58+0.08*Math.sin(t*0.07+i));
+        const spx=cx+Math.cos(ang)*rad;
+        const spy=oy+oh*0.45+Math.sin(ang)*oh*0.42;
+        const tw=(Math.sin(t*0.18+i*1.3)*0.5+0.5);
+        ctx.fillStyle=`hsla(${(hueBase+i*60)%360},95%,75%,${0.3+tw*0.55})`;
+        ctx.font=`${ow*0.10+tw*ow*0.04}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('✨',spx,spy);
+      }
+      ctx.restore();
+      if(_movingFurnitureId===p.id||_placingFurnitureId===p.id){
+        ctx.save();ctx.strokeStyle='#D4AF37';ctx.lineWidth=2.5;ctx.setLineDash([4,3]);
+        ctx.beginPath();ctx.roundRect(ox-4,oy-4,ow+8,oh+8,4);ctx.stroke();ctx.setLineDash([]);ctx.restore();
       }
       return;
     }
@@ -6700,7 +6983,7 @@ function _drawFurnitureInRoom(ctx,W,H,t){
 
   // Show placement ghost cursor — normalized coords, clean crosshair
   const _ghostId = _placingFurnitureId || _placingResidentId;
-  if(_ghostId && _placeCursorX !== null){
+  if(_ghostId && _placeCursorX !== null && !_renderingGhost){
     const gx = _placeCursorX * W;  // convert 0-1 → canvas pixels
     const gy = _placeCursorY * H;
     ctx.save();
@@ -6714,14 +6997,21 @@ function _drawFurnitureInRoom(ctx,W,H,t){
       const item=FURNITURE_CATALOGUE.find(f=>f.id===_placingFurnitureId);
       if(item){
         // Items with custom canvas art should preview with that REAL art (not a
-        // stand-in emoji). Temporarily add a ghost entry to the placed list and
-        // re-run the furniture renderer at reduced opacity, then remove it.
-        const DRAWN_FURNITURE=new Set(['lamp_basic','table_basic','rug_basic','rug_star','bed_cozy','step_stool','cookie_jar','mixing_bowl','pancake_griddle','juice_blender','tea_set','toaster','fruit_bowl']);
+        // stand-in emoji). Render ONLY the ghost item (not the whole room) by
+        // temporarily swapping the placed list to contain just the ghost. This
+        // keeps placement cheap — re-rendering every placed item each frame was
+        // causing lag, especially with heavy items like the candy fountain.
+        const DRAWN_FURNITURE=new Set(['lamp_basic','table_basic','rug_basic','rug_star','bed_cozy','step_stool','cookie_jar','mixing_bowl','pancake_griddle','juice_blender','tea_set','toaster','fruit_bowl','candy_fountain','magic_oven']);
         if(DRAWN_FURNITURE.has(item.id)){
           const _pf=state.placedFurniture;
-          state.placedFurniture=(Array.isArray(_pf)?_pf:[]).concat([{id:item.id,x:_placeCursorX,y:_placeCursorY}]);
+          state.placedFurniture=[{id:item.id,x:_placeCursorX,y:_placeCursorY}];
           ctx.save(); ctx.globalAlpha=0.6;
-          _guardedDraw(ctx, function(){ _drawFurnitureInRoom(ctx,W,H,t); });
+          // Guard against infinite recursion: this ghost block lives INSIDE
+          // _drawFurnitureInRoom, so the recursive call must skip the ghost
+          // block (only re-draw the single placed item).
+          _renderingGhost=true;
+          try{ _drawFurnitureInRoom(ctx,W,H,t); }
+          finally{ _renderingGhost=false; }
           ctx.restore();
           state.placedFurniture=_pf; // restore original list
         } else {
@@ -6850,7 +7140,10 @@ function _tickResAI(ai, id, W, H, t){
     const bowl=_pf.find(p=>p.id==='mixing_bowl');
     if(bowl){
       const dx=ai.x-bowl.x;
-      if(dx*dx < 0.02){ _mixBowlActiveNext=true; ai._baking=true; }
+      if(dx*dx < 0.02){
+        _mixBowlActiveNext=true; ai._baking=true;
+        if((ai.bubbleTimer||0) <= 0){ ai.bubble = (Math.random()<0.7)?'cupcake':'heart'; ai.bubbleTimer=55; }
+      }
       else ai._baking=false;
     }
   } else if(ai.state===RES_STATES.EAT && ai.eatTargetId==='pancake_griddle'){
@@ -6858,7 +7151,10 @@ function _tickResAI(ai, id, W, H, t){
     const grid=_pf.find(p=>p.id==='pancake_griddle');
     if(grid){
       const dx=ai.x-grid.x;
-      if(dx*dx < 0.02){ _griddleActiveNext=true; ai._baking=true; }
+      if(dx*dx < 0.02){
+        _griddleActiveNext=true; ai._baking=true;
+        if((ai.bubbleTimer||0) <= 0){ ai.bubble = (Math.random()<0.7)?'pancake':'heart'; ai.bubbleTimer=55; }
+      }
       else ai._baking=false;
     }
   } else if(ai.state===RES_STATES.EAT && ai.eatTargetId==='juice_blender'){
@@ -6866,7 +7162,10 @@ function _tickResAI(ai, id, W, H, t){
     const blend=_pf.find(p=>p.id==='juice_blender');
     if(blend){
       const dx=ai.x-blend.x;
-      if(dx*dx < 0.02){ _blenderActiveNext=true; ai._baking=true; }
+      if(dx*dx < 0.02){
+        _blenderActiveNext=true; ai._baking=true;
+        if((ai.bubbleTimer||0) <= 0){ ai.bubble = (Math.random()<0.7)?'juice':'heart'; ai.bubbleTimer=55; }
+      }
       else ai._baking=false;
     }
   } else if(ai.state===RES_STATES.EAT && ai.eatTargetId==='toaster'){
@@ -6887,7 +7186,7 @@ function _tickResAI(ai, id, W, H, t){
         } else if(popCyc>0.30 && ai._toastReacted){
           // toast has settled — clear the latch and show a happy yum
           ai._toastReacted=false;
-          if((ai.bubbleTimer||0)<=0){ ai.bubble='yum'; ai.bubbleTimer=40; }
+          if((ai.bubbleTimer||0)<=0){ ai.bubble='toast'; ai.bubbleTimer=40; }
         }
       } else ai._baking=false;
     }
@@ -6898,9 +7197,43 @@ function _tickResAI(ai, id, W, H, t){
       const dx=ai.x-fb.x;
       if(dx*dx < 0.02){
         _fruitBowlActiveNext=true; ai._baking=true;
-        // Gentle nibbling: show a happy yum face periodically while eating.
+        // Nibbling fruit — show a berry (then occasionally a happy yum).
         if((ai.bubbleTimer||0) <= 0){
-          ai.bubble = (Math.random()<0.75)?'yum':'heart'; ai.bubbleTimer=55;
+          ai.bubble = (Math.random()<0.7)?'berry':'yum'; ai.bubbleTimer=55;
+        }
+      } else ai._baking=false;
+    }
+  } else if(ai.state===RES_STATES.EAT && ai.eatTargetId==='magic_oven'){
+    const _pf=Array.isArray(state.placedFurniture)?state.placedFurniture:[];
+    const mo=_pf.find(p=>p.id==='magic_oven');
+    if(mo){
+      const dx=ai.x-mo.x;
+      if(dx*dx < 0.02){
+        _magicOvenActiveNext=true; ai._baking=true;
+        // First arrival: a burst of wonder ("wow!"), then settle into a steady
+        // magic / sparkle / yum mix while watching the treats bake.
+        if(!ai._ovenWowed){
+          ai._ovenWowed=true;
+          ai.bubble='exclaim'; ai.bubbleTimer=50; // "wow!"
+        } else if((ai.bubbleTimer||0) <= 0){
+          const roll=Math.random();
+          ai.bubble = roll<0.45?'magic' : roll<0.75?'star' : 'yum';
+          ai.bubbleTimer=55;
+        }
+      } else ai._baking=false;
+    }
+  } else if(ai.state===RES_STATES.EAT && ai.eatTargetId==='candy_fountain'){
+    const _pf=Array.isArray(state.placedFurniture)?state.placedFurniture:[];
+    const cf=_pf.find(p=>p.id==='candy_fountain');
+    if(cf){
+      const dx=ai.x-cf.x;
+      if(dx*dx < 0.025){
+        ai._baking=true;
+        // Squishies are delighted by the fountain — happy star/heart/yum mix.
+        if((ai.bubbleTimer||0) <= 0){
+          const roll=Math.random();
+          ai.bubble = roll<0.5?'candy' : roll<0.8?'star' : 'heart';
+          ai.bubbleTimer=55;
         }
       } else ai._baking=false;
     }
@@ -6917,10 +7250,10 @@ function _tickResAI(ai, id, W, H, t){
           ai._teaServed=true;
           _teaPourSide = ai.teaSide || (dx<0?-1:1);
           _teaPourTimer = 90; // ~1.5s pour
-          ai.bubble='yum'; ai.bubbleTimer=80; // react right after being served
+          ai.bubble='tea'; ai.bubbleTimer=80; // react right after being served
         } else if((ai.bubbleTimer||0) <= 0){
-          // Occasionally savor again while still seated (mostly yum, some heart)
-          if(Math.random()<0.5){ ai.bubble = (Math.random()<0.7)?'yum':'heart'; ai.bubbleTimer=70; }
+          // Occasionally savor again while still seated (mostly tea, some heart)
+          if(Math.random()<0.5){ ai.bubble = (Math.random()<0.7)?'tea':'heart'; ai.bubbleTimer=70; }
         }
       } else ai._baking=false;
     }
@@ -6928,6 +7261,8 @@ function _tickResAI(ai, id, W, H, t){
     ai._baking=false;
     ai._teaServed=false; // reset when they leave, so next visit pours again
     ai._toastReacted=false; // reset toaster reaction latch
+    ai.fountainSlot=-1; // free up the candy fountain gather slot
+    ai._ovenWowed=false; // reset magic oven first-wow reaction
   }
 
   // Move toward target
@@ -6971,7 +7306,7 @@ function _tickResAI(ai, id, W, H, t){
   // and only when there's a counter appliance present to use.
   let pers = _basePers;
   if(state.currentRoom==='kitchen'){
-    const KITCHEN_USE=new Set(['mixing_bowl','cookie_jar','pancake_griddle','juice_blender','tea_set','toaster','fruit_bowl']);
+    const KITCHEN_USE=new Set(['mixing_bowl','cookie_jar','pancake_griddle','juice_blender','tea_set','toaster','fruit_bowl','candy_fountain','magic_oven']);
     const hasAppliance = placed.some(p=>KITCHEN_USE.has(p.id));
     if(hasAppliance){
       pers = {..._basePers,
@@ -7035,10 +7370,11 @@ function _tickResAI(ai, id, W, H, t){
     ai.bubble='zzz'; ai.bubbleTimer=ai.stateTimer; return;
   }
   cum += pers.eat; if(eatSpots.length && r < cum){ // EAT
-    const COUNTER_ITEMS=new Set(['mixing_bowl','cookie_jar','pancake_griddle','juice_blender','tea_set','toaster','fruit_bowl']);
+    const COUNTER_ITEMS=new Set(['mixing_bowl','cookie_jar','pancake_griddle','juice_blender','tea_set','toaster','fruit_bowl','candy_fountain','magic_oven']);
     // Prefer a counter item if one exists and THIS squishy is the nearest to a
     // free one — that squishy climbs up to use it.
     let chosen=null, useCounter=false, teaGuest=false;
+    let fountainSlot=-1; // which of the 3 gather positions this squishy takes
 
     // ── Tea Set: SOCIAL. Allows TWO squishies — a host and a guest. ──
     const teaSpot = eatSpots.find(s=>s.id==='tea_set');
@@ -7057,11 +7393,34 @@ function _tickResAI(ai, id, W, H, t){
       }
     }
 
+    // ── Candy Fountain: SOCIAL GATHER. Up to THREE squishies fan out around it. ──
+    if(!chosen){
+      const fountSpot = eatSpots.find(s=>s.id==='candy_fountain');
+      if(fountSpot){
+        // Which gather slots (0,1,2) are already taken by other squishies?
+        const taken=new Set();
+        Object.keys(_resAI).forEach(rid=>{
+          if(rid!==id && _resAI[rid].state===RES_STATES.EAT &&
+             _resAI[rid].eatTargetId==='candy_fountain' && _resAI[rid].fountainSlot>=0){
+            taken.add(_resAI[rid].fountainSlot);
+          }
+        });
+        if(taken.size<3){
+          // Claim the lowest free slot, but only if THIS squishy is among the
+          // nearest non-seated squishies (so the closest ones gather first).
+          if(_nearestResidentTo(fountSpot.x, fountSpot.y, 'candy_fountain')===id || taken.size>0){
+            for(let s=0;s<3;s++){ if(!taken.has(s)){ fountainSlot=s; break; } }
+            if(fountainSlot>=0){ chosen=fountSpot; useCounter=true; }
+          }
+        }
+      }
+    }
+
     if(!chosen){
       // Consider ALL counter items, not just the first. A squishy claims the
       // counter item it is nearest to (and that's free) — so with several
       // appliances out, squishies spread across them instead of ignoring most.
-      const counterSpots = eatSpots.filter(s=>COUNTER_ITEMS.has(s.id) && s.id!=='tea_set');
+      const counterSpots = eatSpots.filter(s=>COUNTER_ITEMS.has(s.id) && s.id!=='tea_set' && s.id!=='candy_fountain');
       counterSpots.sort((a,b)=>{
         const da=(ai.x-a.x)**2+(ai.y-a.y)**2, db=(ai.x-b.x)**2+(ai.y-b.y)**2; return da-db;
       });
@@ -7090,6 +7449,16 @@ function _tickResAI(ai, id, W, H, t){
         ai.targetX=Math.max(X_MIN,Math.min(X_MAX,chosen.x + side*0.10));
         ai.targetY=FLOOR_Y_MIN+0.04;
         ai.facing = side<0 ? 1 : -1; // face toward the tea set (inward)
+      } else if(chosen.id==='candy_fountain'){
+        // Gather: up to 3 squishies fan out on the floor in front of the
+        // fountain (left, center-front, right), all facing inward toward it.
+        ai.fountainSlot = fountainSlot;
+        ai.hopReach=false; ai.onStool=false;
+        const offsets=[-0.12, 0.0, 0.12]; // left / center / right
+        const ox=offsets[fountainSlot]||0;
+        ai.targetX=Math.max(X_MIN,Math.min(X_MAX,chosen.x + ox));
+        ai.targetY=FLOOR_Y_MIN+0.05;
+        ai.facing = ox<0 ? 1 : (ox>0 ? -1 : (Math.random()<0.5?1:-1)); // face the fountain
       } else if(useCounter){
         const stool=placed.find(p=>p.id==='step_stool');
         if(stool){
@@ -7218,6 +7587,22 @@ function _drawResidentBubble(ctx, ai, px, py, sqSize, t){
     const yb=1+0.12*Math.abs(Math.sin(t*0.14));
     ctx.save(); ctx.translate(bx+1,by-2); ctx.scale(yb,yb);
     ctx.fillText('😋',0,0); ctx.restore();
+  } else if(ai.bubble==='cupcake'){   // mixing bowl
+    const b=1+0.12*Math.abs(Math.sin(t*0.14)); ctx.save(); ctx.translate(bx+1,by-2); ctx.scale(b,b); ctx.fillText('🧁',0,0); ctx.restore();
+  } else if(ai.bubble==='pancake'){   // pancake griddle
+    const b=1+0.12*Math.abs(Math.sin(t*0.14)); ctx.save(); ctx.translate(bx+1,by-2); ctx.scale(b,b); ctx.fillText('🥞',0,0); ctx.restore();
+  } else if(ai.bubble==='juice'){     // juice blender
+    const b=1+0.12*Math.abs(Math.sin(t*0.14)); ctx.save(); ctx.translate(bx+1,by-2); ctx.scale(b,b); ctx.fillText('🥤',0,0); ctx.restore();
+  } else if(ai.bubble==='toast'){     // toaster
+    const b=1+0.12*Math.abs(Math.sin(t*0.14)); ctx.save(); ctx.translate(bx+1,by-2); ctx.scale(b,b); ctx.fillText('🍞',0,0); ctx.restore();
+  } else if(ai.bubble==='berry'){     // fruit bowl
+    const b=1+0.12*Math.abs(Math.sin(t*0.14)); ctx.save(); ctx.translate(bx+1,by-2); ctx.scale(b,b); ctx.fillText('🍓',0,0); ctx.restore();
+  } else if(ai.bubble==='tea'){       // tea set
+    const b=1+0.12*Math.abs(Math.sin(t*0.14)); ctx.save(); ctx.translate(bx+1,by-2); ctx.scale(b,b); ctx.fillText('🫖',0,0); ctx.restore();
+  } else if(ai.bubble==='candy'){     // candy fountain
+    const b=1+0.15*Math.abs(Math.sin(t*0.13)); ctx.save(); ctx.translate(bx+1,by-2); ctx.scale(b,b); ctx.fillText('🍬',0,0); ctx.restore();
+  } else if(ai.bubble==='magic'){     // magic oven
+    const b=1+0.18*Math.abs(Math.sin(t*0.13)); ctx.save(); ctx.translate(bx+1,by-2); ctx.scale(b,b); ctx.fillText('🔮',0,0); ctx.restore();
   }
   ctx.restore();
 }
@@ -7240,9 +7625,10 @@ function _buildShopTab(el){
   const owned=state.ownedFurniture||[];
   const placed=Array.isArray(state.placedFurniture)?state.placedFurniture:[];
   const placedIds=new Set(placed.map(p=>p.id));
-  const isPro=state.isPro||false;
+  const hasBonusPack=state.hasBonusPack||false;
+  const isPremium=state.isPremium||false;
   const coins=state.coins||0;
-  const RARITY_COLORS={free:'#4CAF50',common:'#888',rare:'#1565C0',pro:'#7B1FA2'};
+  const RARITY_COLORS={free:'#4CAF50',common:'#888',rare:'#1565C0',pro:'#7B1FA2',bonus:'#7B1FA2',premium:'#D4AF37'};
   // Show only items for the room the player is standing in. Items with no
   // `room` field belong to the living room (all the original furniture).
   const _room=state.currentRoom||'living';
@@ -7262,7 +7648,9 @@ function _buildShopTab(el){
     const isOwned=owned.includes(item.id);
     const isPlaced=placedIds.has(item.id);
     const canAfford=coins>=item.cost;
-    const isPaid=item.pro&&!isPro;
+    // Locked if it's a bonus item without the Bonus Pack, OR a premium item
+    // without Premium. Each tier unlocks independently.
+    const isPaid=(item.bonus&&!hasBonusPack)||(item.premium&&!isPremium);
     const rc=RARITY_COLORS[item.rarity]||'#888';
     let btn='';
     if(isPlaced){
@@ -7272,13 +7660,17 @@ function _buildShopTab(el){
     } else if(isOwned){
       btn=`<button onclick="_placeFurniture('${item.id}')" style="width:100%;background:#4CAF50;border:none;border-radius:12px;padding:7px;font-size:11px;font-weight:800;color:white;cursor:pointer;margin-top:2px">Place</button>`;
     } else if(isPaid){
-      btn=`<button onclick="openProModal()" style="width:100%;background:linear-gradient(135deg,#9C27B0,#7B1FA2);border:none;border-radius:12px;padding:7px;font-size:11px;font-weight:800;color:white;cursor:pointer;margin-top:2px">🔒 Bonus</button>`;
+      if(item.premium){
+        btn=`<button onclick="openPremiumModal()" style="width:100%;background:linear-gradient(135deg,#D4AF37,#B8860B);border:none;border-radius:12px;padding:7px;font-size:11px;font-weight:800;color:white;cursor:pointer;margin-top:2px">🔒 Premium</button>`;
+      } else {
+        btn=`<button onclick="openProModal()" style="width:100%;background:linear-gradient(135deg,#9C27B0,#7B1FA2);border:none;border-radius:12px;padding:7px;font-size:11px;font-weight:800;color:white;cursor:pointer;margin-top:2px">🔒 Bonus</button>`;
+      }
     } else if(item.cost===0){
       btn=`<button onclick="_buyFurniture('${item.id}')" style="width:100%;background:#FF9F43;border:none;border-radius:12px;padding:7px;font-size:11px;font-weight:800;color:white;cursor:pointer;margin-top:2px">Get Free!</button>`;
     } else {
       btn=`<button onclick="_buyFurniture('${item.id}')" ${canAfford?'':'disabled'} style="width:100%;background:${canAfford?'#FF9F43':'#E0E0E0'};border:none;border-radius:12px;padding:7px;font-size:11px;font-weight:800;color:${canAfford?'white':'#AAA'};cursor:${canAfford?'pointer':'default'};margin-top:2px">${item.cost+'🪙'}</button>`;
     }
-    const DRAWN_ITEMS=['lamp_basic','table_basic','rug_basic','rug_star','bed_cozy','step_stool','cookie_jar','mixing_bowl','pancake_griddle','juice_blender','tea_set','toaster','fruit_bowl'];
+    const DRAWN_ITEMS=['lamp_basic','table_basic','rug_basic','rug_star','bed_cozy','step_stool','cookie_jar','mixing_bowl','pancake_griddle','juice_blender','tea_set','toaster','fruit_bowl','candy_fountain','magic_oven'];
     const useCanvas=DRAWN_ITEMS.includes(item.id);
     const iconHtml=useCanvas
       ? `<canvas id="shop-icon-${item.id}" width="56" height="56" style="width:56px;height:56px"></canvas>`
@@ -7295,22 +7687,44 @@ function _buildShopTab(el){
     </div>`;
   });
 
-  const proBannerBtn = isPro
-    ? `<div style="background:rgba(255,255,255,0.2);border-radius:14px;padding:8px 14px;font-size:12px;font-weight:900;color:white">✓ UNLOCKED</div>`
-    : `<button onclick="openProModal()" style="background:white;border:none;border-radius:14px;padding:8px 14px;font-size:12px;font-weight:900;color:#7B1FA2;cursor:pointer;white-space:nowrap">Unlock</button>`;
-  const proBannerText = isPro
-    ? 'All exclusive furniture unlocked! Thanks for unlocking the Bonus Pack. ✨'
-    : 'Unlock all exclusive furniture, 1000 bonus coins, and exclusive content — free with a grown-up\'s help.';
+  // The Bonus Pack (free) belongs to the LIVING ROOM only. The kitchen hosts
+  // Premium (paid) items instead, so we don't show the Bonus banner there.
+  if(_room==='living'){
+    const proBannerBtn = hasBonusPack
+      ? `<div style="background:rgba(255,255,255,0.2);border-radius:14px;padding:8px 14px;font-size:12px;font-weight:900;color:white">✓ UNLOCKED</div>`
+      : `<button onclick="openProModal()" style="background:white;border:none;border-radius:14px;padding:8px 14px;font-size:12px;font-weight:900;color:#7B1FA2;cursor:pointer;white-space:nowrap">Unlock</button>`;
+    const proBannerText = hasBonusPack
+      ? 'All exclusive furniture unlocked! Thanks for unlocking the Bonus Pack. ✨'
+      : 'Unlock all exclusive furniture, 1000 bonus coins, and exclusive content — free with a grown-up\'s help.';
 
-  html+=`</div>
-  <div style="margin:0 14px 16px;background:linear-gradient(135deg,#9C27B0,#7B1FA2);border-radius:18px;padding:18px;display:flex;align-items:center;gap:14px">
-    <span style="font-size:36px">${isPro?'🏆':'✨'}</span>
-    <div style="flex:1">
-      <div style="font-size:14px;font-weight:900;color:white">${isPro?'Bonus Pack ✓':'Unlock Bonus Pack'}</div>
-      <div style="font-size:11px;color:rgba(255,255,255,0.8);margin-top:2px">${proBannerText}</div>
-    </div>
-    ${proBannerBtn}
-  </div>`;
+    html+=`</div>
+    <div style="margin:0 14px 16px;background:linear-gradient(135deg,#9C27B0,#7B1FA2);border-radius:18px;padding:18px;display:flex;align-items:center;gap:14px">
+      <span style="font-size:36px">${hasBonusPack?'🏆':'✨'}</span>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:900;color:white">${hasBonusPack?'Bonus Pack ✓':'Unlock Bonus Pack'}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.8);margin-top:2px">${proBannerText}</div>
+      </div>
+      ${proBannerBtn}
+    </div>`;
+  } else {
+    // Kitchen shows a PREMIUM (paid) banner instead of the free Bonus banner.
+    const hasPrem = isPremium;
+    const premBtn = hasPrem
+      ? `<div style="background:rgba(255,255,255,0.2);border-radius:14px;padding:8px 14px;font-size:12px;font-weight:900;color:white">✓ UNLOCKED</div>`
+      : `<button onclick="openPremiumModal()" style="background:white;border:none;border-radius:14px;padding:8px 14px;font-size:12px;font-weight:900;color:#B8860B;cursor:pointer;white-space:nowrap">Unlock</button>`;
+    const premText = hasPrem
+      ? 'All premium kitchen items unlocked! 👑'
+      : 'Unlock showstopper kitchen items like the Candy Fountain — a paid upgrade.';
+    html+=`</div>
+    <div style="margin:0 14px 16px;background:linear-gradient(135deg,#D4AF37,#B8860B);border-radius:18px;padding:18px;display:flex;align-items:center;gap:14px">
+      <span style="font-size:36px">${hasPrem?'👑':'🍬'}</span>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:900;color:white">${hasPrem?'Premium ✓':'Premium Kitchen'}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.85);margin-top:2px">${premText}</div>
+      </div>
+      ${premBtn}
+    </div>`;
+  }
 
   el.innerHTML=html;
 
@@ -7515,6 +7929,50 @@ function _buildShopTab(el){
         ctx.quadraticCurveTo(cx,baseY-1,cx-15,baseY-6);ctx.fill();
         ctx.strokeStyle='rgba(255,240,210,0.5)';ctx.lineWidth=1.2;
         ctx.beginPath();ctx.moveTo(cx-15,baseY-6);ctx.quadraticCurveTo(cx,baseY-1,cx+15,baseY-6);ctx.stroke();
+      } else if(item.id==='candy_fountain'){
+        // Three-tier candy fountain with pink candy and a sparkle
+        const cx=28, baseY=44;
+        ctx.fillStyle='#F6A6C9'; // candy pink
+        // basin
+        ctx.fillStyle='#FFF3FA';ctx.beginPath();ctx.ellipse(cx,baseY,13,3,0,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#F6A6C9';ctx.beginPath();ctx.ellipse(cx,baseY,10,2,0,0,Math.PI*2);ctx.fill();
+        // column
+        ctx.fillStyle='#F6E0EF';ctx.fillRect(cx-2,baseY-26,4,24);
+        // three tiers (bottom to top)
+        [[baseY-8,11],[baseY-15,8],[baseY-22,5]].forEach(([ty,w])=>{
+          ctx.fillStyle='#E8C8DE';ctx.beginPath();ctx.ellipse(cx,ty+1,w,2,0,0,Math.PI*2);ctx.fill();
+          ctx.fillStyle='#F6A6C9';ctx.beginPath();ctx.ellipse(cx,ty,w,2,0,0,Math.PI*2);ctx.fill();
+        });
+        // finial drop
+        ctx.fillStyle='#F48FB1';ctx.beginPath();ctx.arc(cx,baseY-25,3,0,Math.PI*2);ctx.fill();
+        // sparkle
+        ctx.fillStyle='rgba(255,255,210,0.95)';ctx.font='10px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('✨',cx+11,baseY-18);
+      } else if(item.id==='magic_oven'){
+        // Teal magic oven with a glowing window and sparkle
+        const cx=28, oy=20, ow=30, oh=28;
+        const ox=cx-ow/2;
+        // body
+        const bg=ctx.createLinearGradient(ox,oy,ox,oy+oh);
+        bg.addColorStop(0,'#3E5C76');bg.addColorStop(1,'#28415A');
+        ctx.fillStyle=bg;ctx.beginPath();ctx.roundRect(ox,oy,ow,oh,[4,4,2,2]);ctx.fill();
+        // control dials
+        for(let i=0;i<3;i++){ctx.fillStyle='rgba(120,220,255,0.8)';ctx.beginPath();ctx.arc(ox+7+i*8,oy+5,1.6,0,Math.PI*2);ctx.fill();}
+        // window with magical glow
+        const wx=ox+4,wy=oy+9,ww=ow-8,wh=oh-14;
+        ctx.fillStyle='#1E2F40';ctx.beginPath();ctx.roundRect(wx-1,wy-1,ww+2,wh+2,3);ctx.fill();
+        const ig=ctx.createRadialGradient(cx,wy+wh*0.6,1,cx,wy+wh*0.6,ww*0.7);
+        ig.addColorStop(0,'#F6A6E0');ig.addColorStop(0.6,'#B05CD6');ig.addColorStop(1,'#2A1838');
+        ctx.fillStyle=ig;ctx.beginPath();ctx.roundRect(wx,wy,ww,wh,2);ctx.fill();
+        // little treat (cupcake) inside
+        ctx.fillStyle='#F4C9A8';ctx.beginPath();ctx.moveTo(cx-4,wy+wh*0.7);ctx.lineTo(cx+4,wy+wh*0.7);ctx.lineTo(cx+3,wy+wh*0.95);ctx.lineTo(cx-3,wy+wh*0.95);ctx.closePath();ctx.fill();
+        ctx.fillStyle='#FF8FB0';ctx.beginPath();ctx.arc(cx,wy+wh*0.7,4,Math.PI,0);ctx.fill();
+        // handle
+        ctx.strokeStyle='#9FB4C8';ctx.lineWidth=1.6;ctx.lineCap='round';
+        ctx.beginPath();ctx.moveTo(ox+5,oy+oh-3);ctx.lineTo(ox+ow-5,oy+oh-3);ctx.stroke();
+        // sparkle
+        ctx.fillStyle='rgba(255,255,255,0.95)';ctx.font='9px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('✨',cx+10,oy+8);
       }
     });
   });
@@ -7700,6 +8158,8 @@ let _blenderActive=false, _blenderActiveNext=false;
 let _teaSetActive=false, _teaSetActiveNext=false;
 let _toasterActive=false, _toasterActiveNext=false;
 let _fruitBowlActive=false, _fruitBowlActiveNext=false;
+let _renderingGhost=false; // true only during the recursive ghost-preview render
+let _magicOvenActive=false, _magicOvenActiveNext=false;
 // One-shot pour: when a squishy sits at tea, we trigger a brief pour toward its
 // side. _teaPourSide is -1 (left) or 1 (right); _teaPourTimer counts down frames.
 let _teaPourSide=0, _teaPourTimer=0;
@@ -7751,9 +8211,9 @@ function _cancelPlacement(){
 function _placeResident(id){
   const sq=SQUISHIES.find(s=>s.id===id);if(!sq)return;
   const current=(state.placedResidents||[]).filter(r=>r.id!==id).length;
-  const cap=state.isPro?8:6;
+  const cap=state.hasBonusPack?8:6;
   if(current>=cap){
-    showToast(state.isPro?'Room is full! Max 8 residents 🏡':'Room is full! Unlock the Bonus Pack for up to 8 🌟');
+    showToast(state.hasBonusPack?'Room is full! Max 8 residents 🏡':'Room is full! Unlock the Bonus Pack for up to 8 🌟');
     return;
   }
   _placingResidentId=id;_placingFurnitureId=null;
@@ -7822,7 +8282,7 @@ function _commitPlacement(nx,ny){
   const id=_placingFurnitureId;
   state.placedFurniture=Array.isArray(state.placedFurniture)?state.placedFurniture:[];
   const currentFurn=state.placedFurniture.filter(p=>p.id!==id);
-  if(currentFurn.length>=8){showToast('Room is full! Remove something first 🪑');_placingFurnitureId=null;_placeCursorX=null;_placeCursorY=null;_setPlacementOverlay(false);const hint=document.getElementById('home-room-hint');if(hint)hint.style.display='none';return;}
+  if(currentFurn.length>=8){showToast('Your room shows 8 items at once — move one out to add this! ✨');_placingFurnitureId=null;_placeCursorX=null;_placeCursorY=null;_setPlacementOverlay(false);const hint=document.getElementById('home-room-hint');if(hint)hint.style.display='none';return;}
   state.placedFurniture=state.placedFurniture.filter(p=>p.id!==id);
   state.placedFurniture.push({id,x:cx,y:cy});
   saveState();
@@ -10197,8 +10657,8 @@ function openProModal(){
   _proPinBuffer = '';
   _proPurchaseType = '';
   // Show correct state
-  document.getElementById('pro-already').style.display   = state.isPro ? '' : 'none';
-  document.getElementById('pro-options').style.display   = state.isPro ? 'none' : '';
+  document.getElementById('pro-already').style.display   = state.hasBonusPack ? '' : 'none';
+  document.getElementById('pro-options').style.display   = state.hasBonusPack ? 'none' : '';
   document.getElementById('pro-pin-view').style.display  = 'none';
   modal.style.display = 'flex';
 }
@@ -10207,6 +10667,50 @@ function closeProModal(){
   const modal = document.getElementById('pro-modal');
   if(modal) modal.style.display = 'none';
   _proPinBuffer = '';
+}
+
+// ─── PREMIUM (paid) tier ───
+function openPremiumModal(){
+  const modal = document.getElementById('premium-modal');
+  if(!modal) return;
+  document.getElementById('premium-already').style.display = state.isPremium ? '' : 'none';
+  document.getElementById('premium-options').style.display = state.isPremium ? 'none' : '';
+  modal.style.display = 'flex';
+}
+
+function closePremiumModal(){
+  const modal = document.getElementById('premium-modal');
+  if(modal) modal.style.display = 'none';
+}
+
+function buyPremium(){
+  // ════════════════════════════════════════════════════════════════════
+  // ▼▼▼ DEV / TEST ONLY — REPLACE WITH REAL PLAY BILLING BEFORE LAUNCH ▼▼▼
+  // Real billing will use the Digital Goods API (getDigitalGoodsService),
+  // buy() on the Play Billing payment method, then acknowledge the purchase —
+  // the SAME acknowledge/consume pattern used in Einstein Clock's
+  // buyProWithPlay(). Until v2 is a published TWA with the premium product
+  // active in the Play Console, this grants Premium for free so the premium
+  // items are testable in the sandbox. This block MUST be removed/replaced.
+  _grantPremium();
+  // ▲▲▲ DEV / TEST ONLY — REPLACE WITH REAL PLAY BILLING BEFORE LAUNCH ▲▲▲
+  // ════════════════════════════════════════════════════════════════════
+}
+
+function _grantPremium(){
+  state.isPremium = true;
+  // Unlock all premium furniture
+  const premItems = (FURNITURE_CATALOGUE||[]).filter(f=>f.premium).map(f=>f.id);
+  premItems.forEach(id=>{ if(!state.ownedFurniture.includes(id)) state.ownedFurniture.push(id); });
+  saveState();
+  closePremiumModal();
+  _triggerLevelUp({lvl:'👑', title:'Premium Unlocked!'});
+  setTimeout(()=>showToast('👑 Premium kitchen items unlocked!'),600);
+  // Rebuild the shop so the newly-unlocked items flip to "Place". The player is
+  // in the shop when they unlock, so rebuild directly (the old borderBottom hex
+  // check was unreliable — browsers normalize the color and it failed to match).
+  const content = document.getElementById('home-tab-content');
+  if(content) _buildShopTab(content);
 }
 
 function unlockProMode(){
@@ -10254,9 +10758,10 @@ function _confirmProPurchase(){
     _updateProPinDots();
     return;
   }
-  state.isPro = true;
-  // Unlock all Pro furniture
-  const proItems = (FURNITURE_CATALOGUE||[]).filter(f=>f.pro).map(f=>f.id);
+  state.hasBonusPack = true;
+  state.isPro = true; // keep legacy alias in sync
+  // Unlock all free Bonus Pack furniture
+  const proItems = (FURNITURE_CATALOGUE||[]).filter(f=>f.bonus).map(f=>f.id);
   proItems.forEach(id=>{ if(!state.ownedFurniture.includes(id)) state.ownedFurniture.push(id); });
   // One-time bonus coins on first unlock
   if(!state.starterPackClaimed){
