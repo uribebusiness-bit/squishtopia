@@ -1076,6 +1076,8 @@ const BADGES = [
   {id:'explorer', name:'Explorer',     icon:'🗺️', desc:'Visit all Squish Spots'},
   {id:'speed',    name:'Speed Squisher',icon:'⏱️',desc:'Collect 10 squishies'},
   {id:'family',   name:'Family First', icon:'🏠', desc:'Complete a full family'},
+  {id:'bff',      name:'Best Friends', icon:'💛', desc:'Reach Friendship Lv 10 with a squishy'},
+  {id:'soulmates',name:'Soulmate Squad',icon:'✨', desc:'Reach Lv 10 with 10 squishies'},
 ];
 
 const EVENTS = [
@@ -3957,8 +3959,46 @@ function drawMiniMap(ctx,W,H){
 // Build a live-event boost map: family → multiplier (only 'live' events)
 function _getEventBoosts(){
   const boosts={};
-  EVENTS.forEach(ev=>{ if(ev.status==='live' && ev.family && ev.boost) boosts[ev.family]=(boosts[ev.family]||1)*ev.boost; });
+  EVENTS.forEach(ev=>{ if(_eventStatus(ev)==='live' && ev.family && ev.boost) boosts[ev.family]=(boosts[ev.family]||1)*ev.boost; });
   return boosts;
+}
+
+// ── Real, date-driven event rotation ───────────────────────────────
+// Events were previously hardcoded ('live'/'soon'/'ended') and never changed,
+// so the "Limited time!" framing was hollow. Now each event's status is
+// computed from the actual calendar: the roster rotates on a fixed cadence so
+// a different event is genuinely LIVE every few days, cycling through all of
+// them over time. Pure function of the date — no stored state, self-syncing to
+// the player's real clock, so returning players see a fresh live event.
+const _EVENT_PERIOD_DAYS = 4;   // each event is live for 4 days
+function _dayOfYearIndex(){
+  const now=new Date();
+  const start=new Date(now.getFullYear(),0,0);
+  const diff=now-start;
+  return Math.floor(diff/(1000*60*60*24)); // 1..366
+}
+// Which event index is live right now, and how the others read relative to it.
+function _liveEventIndex(){
+  if(!EVENTS.length) return 0;
+  const slot=Math.floor(_dayOfYearIndex()/_EVENT_PERIOD_DAYS);
+  return slot % EVENTS.length;
+}
+function _eventStatus(ev){
+  const i=EVENTS.indexOf(ev);
+  const live=_liveEventIndex();
+  if(i===live) return 'live';
+  // The next one in rotation is "soon"; the one that just finished is "ended";
+  // everything else is also "soon" (upcoming in the cycle).
+  const next=(live+1)%EVENTS.length;
+  const prev=(live-1+EVENTS.length)%EVENTS.length;
+  if(i===prev) return 'ended';
+  if(i===next) return 'soon';
+  return 'soon';
+}
+// Days remaining in the current live event (for an honest countdown).
+function _eventDaysLeft(){
+  const d=_dayOfYearIndex();
+  return _EVENT_PERIOD_DAYS - (d % _EVENT_PERIOD_DAYS);
 }
 function weightedRandomSQ(zone){
   const eventBoosts=_getEventBoosts();
@@ -9360,7 +9400,7 @@ function initPark(){
   if(!pods.length){spawnAllPods();initAmbient();}
   if(!parkLooping){parkLooping=true;parkLoop();}
   // Show live event notice in HUD
-  const liveEvents=EVENTS.filter(e=>e.status==='live'&&e.family);
+  const liveEvents=EVENTS.filter(e=>_eventStatus(e)==='live'&&e.family);
   const eventBanner=document.getElementById('park-event-banner');
   if(eventBanner){
     if(liveEvents.length){
@@ -10229,6 +10269,8 @@ function _triggerFriendshipMilestone(sq, lvl){
   // Coin reward
   addCoins(m.coins);
   addXP(XP_REWARDS.friendship_milestone, 'friendship');
+  // Hitting Lv 10 may earn the end-game friendship badges — check now.
+  if(lvl>=10) checkAchievements();
   saveState();
   // Flash overlay
   const wrap = document.createElement('div');
@@ -10561,11 +10603,14 @@ function buildEvents(){
     ${!claimed&&day<30?`<div style="padding:0 16px 16px"><div style="background:#FFF8E8;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px"><span style="font-size:30px">${nextGift.icon}</span><div style="flex:1"><div style="font-size:13px;font-weight:800;color:#2D1B00">Day ${day+1}: ${nextGift.label}</div><div style="font-size:12px;color:#888;margin-top:2px">${nextGift.desc}</div></div><button onclick="claimDailyGift()" style="background:linear-gradient(135deg,#FFD166,#FF9F43);color:white;border:none;padding:10px 16px;border-radius:20px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;box-shadow:0 3px 10px rgba(255,159,67,0.4)">Claim!</button></div></div>`:''}
   </div>`;
   EVENTS.forEach(ev=>{
-    const isLive = ev.status==='live';
-    const isSoon = ev.status==='soon';
+    const _st = _eventStatus(ev);
+    const isLive = _st==='live';
+    const isSoon = _st==='soon';
     const statusBadge = isLive ? '🔴 LIVE' : isSoon ? '🔵 SOON' : '⚫ Ended';
     const boostChip = isLive&&ev.family ? `<span style="font-size:11px;font-weight:800;background:#E8F5E9;color:#2E7D32;padding:3px 10px;border-radius:20px">⬆ ${ev.boost}× ${ev.family}</span>` : '';
-    html+=`<div class="event-card" style="opacity:${ev.status==='ended'?'0.6':'1'}">
+    const _daysLeft = _eventDaysLeft();
+    const _timeLabel = isLive ? (_daysLeft<=1?'Ends today!':_daysLeft+' days left') : isSoon ? 'Coming soon' : 'Ended';
+    html+=`<div class="event-card" style="opacity:${_st==='ended'?'0.6':'1'}">
       <div class="event-banner" style="background:${ev.bg}">
         <span style="font-size:44px;line-height:1">${ev.banner}</span>
         ${isLive?`<div style="position:absolute;top:10px;right:12px;background:rgba(255,80,50,0.9);color:white;font-size:10px;font-weight:900;padding:3px 10px;border-radius:20px">🔴 LIVE</div>`:''}
@@ -10573,7 +10618,7 @@ function buildEvents(){
       <div class="event-body">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
           <div class="event-name">${ev.name}</div>
-          <span style="font-size:11px;font-weight:700;color:#AAA;white-space:nowrap;margin-top:3px">${isLive?'Live now':isSoon?'Coming soon':'Ended'}</span>
+          <span style="font-size:11px;font-weight:700;color:#AAA;white-space:nowrap;margin-top:3px">${_timeLabel}</span>
         </div>
         <div class="event-desc">${ev.desc}</div>
         ${boostChip ? `<div style="margin-top:8px">${boostChip}</div>` : ''}
@@ -10640,6 +10685,21 @@ function buildTrade(){
   const opts=document.getElementById('converter-options');
   if(opts){
     let html='';
+    // ── Lucky Roll: a permanent COIN sink so coins always have a use, even
+    // after all furniture is bought. Buys a random squishy (weighted to common/
+    // uncommon, with a small shot at rarer) — keeps the collect loop alive for
+    // end-game players without being pay-to-win. ──
+    const LUCKY_COST=40;
+    const canLucky=(state.coins||0)>=LUCKY_COST;
+    html+=`<div style="display:flex;align-items:center;gap:10px;background:${canLucky?'#FFF0F6':'#F8F8F8'};border-radius:14px;padding:10px 12px;border:1.5px solid ${canLucky?'#FF8FAB':'#EEE'}">
+      <span style="font-size:24px">🍀</span>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:800;color:${canLucky?'#2D1B00':'#AAA'}">Lucky Roll</div>
+        <div style="font-size:11px;color:${canLucky?'#888':'#BBB'};margin-top:1px">Spend coins for a surprise squishy pod!</div>
+        <div style="font-size:10px;font-weight:700;color:${canLucky?'#FF6B8A':'#CCC'};margin-top:2px">Costs ${LUCKY_COST}🪙 · You have: ${state.coins||0}🪙</div>
+      </div>
+      <button onclick="_luckyRoll()" ${canLucky?'':'disabled'} style="background:${canLucky?'linear-gradient(135deg,#FF8FAB,#FF6B8A)':'#EEE'};border:none;border-radius:10px;padding:8px 12px;font-size:11px;font-weight:900;color:${canLucky?'white':'#BBB'};cursor:${canLucky?'pointer':'default'}">Roll!</button>
+    </div>`;
     CONVERTER_TIERS.forEach((tier,i)=>{
       const available=dupes.filter(sq=>sq.rarity===tier.costRarity).reduce((sum,sq)=>{
         return sum+(state.counts[sq.id]||1)-1;
@@ -10657,6 +10717,33 @@ function buildTrade(){
     });
     opts.innerHTML=html;
   }
+}
+
+// Lucky Roll — the coin sink. Spend coins for a random squishy. Rarity is
+// weighted heavily toward common/uncommon so it never trivializes the rare
+// chase (and isn't pay-to-win), but there's a small thrill of better pulls.
+function _luckyRoll(){
+  const LUCKY_COST=40;
+  if((state.coins||0) < LUCKY_COST){ showToast('Not enough coins! 🪙'); haptic(HAP.error); return; }
+  spendCoins(LUCKY_COST);
+  // Weighted rarity: mostly common/uncommon, rare-and-up are uncommon thrills.
+  const roll=Math.random();
+  let tier = roll<0.55 ? 'common'
+           : roll<0.82 ? 'uncommon'
+           : roll<0.95 ? 'rare'
+           : roll<0.99 ? 'epic'
+           : 'legendary';
+  // Prefer an uncollected squishy of that tier; fall back to any of that tier.
+  let pool=SQUISHIES.filter(s=>s.rarity===tier && !state.collected.includes(s.id));
+  if(!pool.length) pool=SQUISHIES.filter(s=>s.rarity===tier);
+  // Final fallback (e.g. tier somehow empty): any squishy.
+  if(!pool.length) pool=SQUISHIES.slice();
+  const winner=pool[Math.floor(Math.random()*pool.length)];
+  if(!winner){ addCoins(LUCKY_COST); showToast('Roll failed — coins refunded.'); return; }
+  saveState();
+  updateCoinDisplay();
+  buildTrade();
+  _mysteryReveal(winner);
 }
 
 // Mystery converter — spend dupes of one rarity, get a guaranteed higher-rarity squishy
@@ -10887,6 +10974,11 @@ function checkAchievements(){
     const members=SQUISHIES.filter(s=>s.family===fam.id);
     if(members.every(s=>state.collected.includes(s.id))) state.badges.add('family');
   });
+  // End-game friendship grind: Lv 10 needs 28 squeezes (floor(28/3)+1 = 10).
+  const maxedFriends = Object.entries(state.friendship||{})
+    .filter(([id,sq])=>state.collected.includes(id) && sq>=28).length;
+  if(maxedFriends>=1) state.badges.add('bff');
+  if(maxedFriends>=10) state.badges.add('soulmates');
   saveState();
 }
 
