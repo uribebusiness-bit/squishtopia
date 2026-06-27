@@ -252,9 +252,9 @@ html,body{width:100%;height:100%;min-height:100dvh;overflow:hidden;background:#2
 .profile-avatar-ring:active{transform:scale(0.95)}
 .profile-name{font-size:24px;font-weight:900;color:white;text-align:center;text-shadow:0 2px 6px rgba(0,0,0,0.15)}
 .profile-tagline{font-size:13px;color:rgba(255,255,255,0.8);text-align:center;font-weight:600;margin-top:2px}
-.profile-stats-row{display:flex;gap:12px;padding:16px;background:white;border-bottom:1px solid rgba(0,0,0,0.06)}
-.profile-stat{flex:1;text-align:center}
-.profile-stat .stat-num{font-size:26px;font-weight:900;color:var(--darktext)}
+.profile-stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 12px;padding:16px;background:white;border-bottom:1px solid rgba(0,0,0,0.06)}
+.profile-stat{text-align:center}
+.profile-stat .stat-num{font-size:22px;font-weight:900;color:var(--darktext)}
 .profile-stat .stat-label{font-size:11px;font-weight:700;color:#AAA;text-transform:uppercase;letter-spacing:0.5px}
 .badges-section{padding:16px}
 .section-title{font-size:18px;font-weight:900;color:var(--darktext);margin-bottom:12px}
@@ -337,9 +337,10 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
 #avatar-modal.show{display:flex}
 .avatar-sheet{background:white;border-radius:var(--radius-xl) var(--radius-xl) 0 0;padding:24px;width:100%;max-width:430px}
 .avatar-sheet-title{font-size:18px;font-weight:900;color:var(--darktext);text-align:center;margin-bottom:16px}
-.avatar-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
-.avatar-option{font-size:36px;text-align:center;padding:8px;border-radius:var(--radius-md);cursor:pointer;transition:all 0.15s;background:#F8F8F8}
+.avatar-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;max-height:50vh;overflow-y:auto}
+.avatar-option{text-align:center;padding:8px;border-radius:var(--radius-md);cursor:pointer;transition:all 0.15s;background:#F8F8F8;display:flex;align-items:center;justify-content:center}
 .avatar-option:active{transform:scale(0.88);background:#EEE}
+.avatar-option.avatar-selected{background:#FFF0F6;box-shadow:0 0 0 2px #FF8FAB inset}
 .avatar-cancel{width:100%;background:#F0F0F0;border:none;border-radius:var(--radius-md);padding:14px;font-size:16px;font-weight:700;color:#888;cursor:pointer;font-family:'Nunito',sans-serif;margin-top:12px}
 
 /* ===== COLLECT ANIMATION ===== */
@@ -540,8 +541,8 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
 <div id="screen-profile" class="screen">
   <div style="flex:1;overflow-y:auto;padding-bottom:calc(var(--nav-h)+80px)">
     <div class="profile-header">
-      <div class="profile-avatar-ring" id="avatar-ring" onclick="openAvatarPicker()">🐿️</div>
-      <div class="profile-name" id="profile-name">Squish Explorer</div>
+      <div class="profile-avatar-ring" id="avatar-ring" onclick="openAvatarPicker()"><canvas id="avatar-canvas" width="76" height="76" style="width:76px;height:76px"></canvas></div>
+      <div class="profile-name" id="profile-name" onclick="openNamePicker()" style="cursor:pointer">Squish Explorer <span style="font-size:14px;opacity:0.7">✏️</span></div>
       <div class="profile-tagline" id="profile-tagline">Level 1 Collector</div>
       <div style="margin:10px 24px 0;background:rgba(255,255,255,0.25);border-radius:20px;height:10px;overflow:hidden">
         <div id="xp-bar-fill" style="height:100%;border-radius:20px;background:white;width:0%;transition:width 0.6s cubic-bezier(0.34,1.56,0.64,1)"></div>
@@ -553,8 +554,11 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
     </div>
     <div class="profile-stats-row">
       <div class="profile-stat"><div class="stat-num" id="stat-collected">0</div><div class="stat-label">Collected</div></div>
+      <div class="profile-stat"><div class="stat-num" id="stat-completion">0%</div><div class="stat-label">Complete</div></div>
       <div class="profile-stat"><div class="stat-num" id="stat-streak">0</div><div class="stat-label">Day Streak</div></div>
       <div class="profile-stat"><div class="stat-num" id="stat-squeezes">0</div><div class="stat-label">Squeezes</div></div>
+      <div class="profile-stat"><div class="stat-num" id="stat-badges">0</div><div class="stat-label">Badges</div></div>
+      <div class="profile-stat"><div class="stat-num" id="stat-bonds">0</div><div class="stat-label">Bonds Maxed</div></div>
     </div>
     <div class="badges-section" id="best-friends-section" style="padding:16px;border-bottom:1px solid rgba(0,0,0,0.06)">
       <div class="section-title">💛 Best Friends</div>
@@ -712,9 +716,29 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
 <!-- AVATAR PICKER -->
 <div id="avatar-modal">
   <div class="avatar-sheet">
-    <div class="avatar-sheet-title">Choose Your Avatar</div>
+    <div class="avatar-sheet-title">Choose Your Avatar Squishy</div>
     <div class="avatar-grid" id="avatar-grid"></div>
     <button class="avatar-cancel" onclick="closeAvatarPicker()">Cancel</button>
+  </div>
+</div>
+
+<!-- PLAYER NAME MODAL -->
+<div id="player-name-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:360;display:none;align-items:center;justify-content:center;padding:20px">
+  <div style="background:white;border-radius:24px;max-width:320px;width:100%;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+    <div style="background:linear-gradient(135deg,#FF8FAB,#FF6B8A);padding:18px 20px;text-align:center">
+      <div style="font-size:34px">🐿️</div>
+      <div style="font-size:17px;font-weight:900;color:white;margin-top:2px">What's your name?</div>
+    </div>
+    <div style="padding:18px">
+      <input id="player-name-input" type="text" maxlength="16" placeholder="Type your name…" autocomplete="off"
+        style="width:100%;box-sizing:border-box;border:2px solid #FFD6E0;border-radius:14px;padding:12px;font-size:16px;font-weight:700;color:#2D1B00;outline:none;text-align:center"
+        oninput="document.getElementById('player-name-error').textContent=''" />
+      <div id="player-name-error" style="color:#FF6B6B;font-size:11px;font-weight:700;text-align:center;min-height:14px;margin-top:6px"></div>
+      <div style="display:flex;gap:10px;margin-top:10px">
+        <button onclick="_savePlayerName()" style="flex:1;background:linear-gradient(135deg,#FF8FAB,#FF6B8A);color:white;border:none;border-radius:16px;padding:13px;font-size:15px;font-weight:900;cursor:pointer">Save 💛</button>
+        <button onclick="_closeNamePicker()" style="background:#F0F0F0;color:#888;border:none;border-radius:16px;padding:13px 18px;font-size:14px;font-weight:700;cursor:pointer">Cancel</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1073,7 +1097,7 @@ const BADGES = [
   {id:'daily30',  name:'Dedicated',    icon:'📅', desc:'30-day login'},
   {id:'trader',   name:'Trader',       icon:'🤝', desc:'Complete a trade'},
   {id:'social',   name:'Social Squish',icon:'👥', desc:'Share your Collector ID'},
-  {id:'explorer', name:'Explorer',     icon:'🗺️', desc:'Visit all Squish Spots'},
+  {id:'explorer', name:'Explorer',     icon:'🗺️', desc:'Explore the whole park'},
   {id:'speed',    name:'Speed Squisher',icon:'⏱️',desc:'Collect 10 squishies'},
   {id:'family',   name:'Family First', icon:'🏠', desc:'Complete a full family'},
   {id:'bff',      name:'Best Friends', icon:'💛', desc:'Reach Friendship Lv 10 with a squishy'},
@@ -1107,6 +1131,7 @@ let state = {
   spotsVisited:new Set(), avatar:'🐿️', name:'Squish Explorer',
   badges:new Set(), friendCode:'SQSH-'+(7000+Math.floor(Math.random()*2999)), soundEnabled:true, musicEnabled:true, tradeEnabled:true, dailyLimitEnabled:false, playTimeToday:0, lastLimitDay:'', parentPin:'0000',
   friendship:{}, lastDailyGift:null, dailyGiftDay:0, squishNames:{},
+  quests:{daily:[], weekly:[], dailyDate:'', weeklyDate:''},
   firstTime:true, xp:0, isPro:false, hasBonusPack:false, isPremium:false, starterPackClaimed:false, premiumPackClaimed:false,
   coins:0, ownedFurniture:['rug_basic','table_basic','lamp_basic'], placedFurniture:[
     {id:'rug_basic',   x:0.42, y:0.88},
@@ -1142,6 +1167,7 @@ try {
       state.counts         = obj(parsed.counts, {});
       state.friendship     = obj(parsed.friendship, {});
       state.squishNames    = obj(parsed.squishNames, {});
+      state.quests         = obj(parsed.quests, {daily:[], weekly:[], dailyDate:'', weeklyDate:''});
       state.spotsVisited   = new Set(arr(parsed.spotsVisited, []));
       state.badges         = new Set(arr(parsed.badges, []));
       state.totalSqueezes  = num(parsed.totalSqueezes, 0);
@@ -1249,6 +1275,9 @@ function squishDisplayName(sq){
 function squishHasCustomName(sq){
   const nm=(state.squishNames||{})[sq && sq.id];
   return !!(typeof nm==='string' && nm.trim());
+}
+function _escapeHtml(str){
+  return String(str==null?'':str).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 function validateSquishName(raw){
   let s=(raw||'').replace(/[^A-Za-z0-9 '\-]/g,'').replace(/\s+/g,' ').trim();
@@ -2884,6 +2913,7 @@ function _updateSprint(){ joySprinting = _sprintKey || _sprintBtn; }
 const sqBaseSpeed=4.2,sqSprintSpeed=4.2;
 let pods=[],parkT=0;
 let exploredCells={},exploredPct=0;
+let _lastExploreQuestBracket=0; // tracks 5% brackets for the explore quest
 let podOpenCooldown=0,_collectingPod=null;
 let WORLD_CANVAS=null;
 
@@ -3886,6 +3916,14 @@ function markExplored(wx,wy){
     const COVERABLE=0.88;
     const raw=Object.keys(exploredCells).length/(tot*COVERABLE);
     exploredPct=Math.min(100,Math.floor(raw*100));
+    // Explore quest: credit "new ground discovered" each time exploration
+    // crosses a fresh 5% bracket (a reasonable proxy for reaching a new area).
+    const _expBracket5=Math.floor(exploredPct/5);
+    if(typeof _lastExploreQuestBracket==='undefined') window._lastExploreQuestBracket=0;
+    if(_expBracket5 > _lastExploreQuestBracket && exploredPct>0){
+      _lastExploreQuestBracket=_expBracket5;
+      if(typeof _questProgress==='function') _questProgress('explore',1);
+    }
     const el=document.getElementById('explore-pct');if(el)el.textContent=exploredPct+'% explored';
   }
 }
@@ -8386,12 +8424,12 @@ function _showTradeDupes(){
 
   const totalCoins=dupes.reduce((sum,sq)=>{
     const extras=(state.counts?.[sq.id]||1)-1;
-    return sum+extras*Math.round((COIN_VALUE[sq.rarity]||1)*0.3);
+    return sum+extras*Math.max(1,Math.round((COIN_VALUE[sq.rarity]||1)*0.3));
   },0);
 
   let rows=dupes.map(sq=>{
     const extras=(state.counts?.[sq.id]||1)-1;
-    const each=Math.round((COIN_VALUE[sq.rarity]||1)*0.3)||1;
+    const each=Math.max(1,Math.round((COIN_VALUE[sq.rarity]||1)*0.3));
     const total=extras*each;
     const RARITY_COLORS={mythic:'#4527A0',legendary:'#F57F17',epic:'#006064',rare:'#1565C0',uncommon:'#2E7D32',common:'#888'};
     const rc=RARITY_COLORS[sq.rarity]||'#888';
@@ -8642,6 +8680,7 @@ function _commitPlacement(nx,ny){
   const hint=document.getElementById('home-room-hint');if(hint)hint.style.display='none';
   const item=FURNITURE_CATALOGUE.find(f=>f.id===id);
   showToast(`${item?item.icon:''} Placed!`);
+  _questProgress('decorate',1);
   const content=document.getElementById('home-tab-content');
   if(content)_buildShopTab(content);
 }
@@ -9624,6 +9663,7 @@ function doSqueeze(){
   if(!currentSquishy||squeezeCount>=3)return;
   const amounts=[0.72,0.64,0.55];squishScale=amounts[squeezeCount];// more dramatic squish
   state.totalSqueezes++;squeezeCount++;
+  _questProgress('squeeze',1);
   addXP(XP_REWARDS.squeeze, 'squeeze');
   // Award XP for exploration milestones (every 10%)
   const expBracket = Math.floor(exploredPct/10)*10;
@@ -9641,8 +9681,9 @@ function doSqueeze(){
     const newSqueezes = state.friendship[sqId];
     const newLvl = Math.min(10, Math.floor(newSqueezes/3)+1);
     const prevLvl = Math.min(10, Math.floor(prevSqueezes/3)+1);
-    if(newLvl > prevLvl && FRIENDSHIP_MILESTONES[newLvl]){
-      _triggerFriendshipMilestone(currentSquishy, newLvl);
+    if(newLvl > prevLvl){
+      _questProgress('befriend',1); // any new friendship level counts
+      if(FRIENDSHIP_MILESTONES[newLvl]) _triggerFriendshipMilestone(currentSquishy, newLvl);
     }
   }
   if(currentSquishy&&currentSquishy.family==='Gloomies') _gloomieSmileT=90;
@@ -9806,6 +9847,10 @@ function doCollect(){
   const xpTable = isNew ? XP_REWARDS.collect_new : XP_REWARDS.collect_dupe;
   addXP(xpTable[sq.rarity]||xpTable.common, 'collect');
   checkAchievements();saveState();
+  // Quest progress: every collect counts; rare-or-better also counts for the
+  // 'rare' quest. (Both new and duplicate collects count toward 'collect'.)
+  _questProgress('collect',1);
+  if(['rare','epic','legendary','mythic'].includes(sq.rarity)) _questProgress('rare',1);
   if(_collectingPod)respawnPod(_collectingPod);_collectingPod=null;
   if(playAnim){cancelAnimationFrame(playAnim);playAnim=null;}
   launchConfetti(sq.colors);
@@ -10573,27 +10618,158 @@ function claimDailyGift(){
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// ===== QUEST BOARD =====
+// Active daily + weekly goals that point kids at content they already have
+// (collect / squeeze / befriend / explore / decorate / trade). Progress is
+// auto-tracked from gameplay via _questProgress(type, n) and auto-claimed on
+// completion with a celebration — no "claim" button to forget. This replaces
+// the old passive events list; the spawn-boost idea survives as a quest type.
+// ═══════════════════════════════════════════════════════════════════
+
+// Quest templates. Each: {type, goal, coins, xp, label, icon}. `type` is the
+// event key gameplay reports against; `goal` is the target count.
+const DAILY_QUEST_POOL = [
+  {type:'collect',  goal:3,  coins:20, xp:15, icon:'🧺', label:'Collect 3 squishies'},
+  {type:'collect',  goal:5,  coins:35, xp:25, icon:'🧺', label:'Collect 5 squishies'},
+  {type:'squeeze',  goal:15, coins:15, xp:15, icon:'🤏', label:'Squeeze squishies 15 times'},
+  {type:'squeeze',  goal:25, coins:25, xp:20, icon:'🤏', label:'Squeeze squishies 25 times'},
+  {type:'explore',  goal:1,  coins:15, xp:15, icon:'🗺️', label:'Discover a new zone'},
+  {type:'befriend', goal:1,  coins:20, xp:20, icon:'💛', label:'Reach a new friendship level'},
+  {type:'decorate', goal:1,  coins:15, xp:10, icon:'🏡', label:'Place an item in a room'},
+  {type:'lucky',    goal:1,  coins:10, xp:10, icon:'🍀', label:'Do a Lucky Roll'},
+  {type:'rare',     goal:1,  coins:30, xp:25, icon:'💎', label:'Collect a rare-or-better squishy'},
+];
+const WEEKLY_QUEST_POOL = [
+  {type:'collect',  goal:20, coins:120, xp:100, icon:'🏆', label:'Collect 20 squishies this week'},
+  {type:'squeeze',  goal:100,coins:100, xp:90,  icon:'🏆', label:'Squeeze 100 times this week'},
+  {type:'befriend', goal:5,  coins:130, xp:110, icon:'🏆', label:'Reach 5 friendship levels this week'},
+  {type:'family',   goal:1,  coins:150, xp:120, icon:'🏆', label:'Complete any squishy family'},
+  {type:'trade',    goal:3,  coins:110, xp:90,  icon:'🏆', label:'Do 3 dupe rolls this week'},
+];
+
+function _todayStr(){ return new Date().toDateString(); }
+function _weekStr(){
+  // ISO-ish week key: year + week number, so it rolls once per calendar week.
+  const d=new Date();
+  const onejan=new Date(d.getFullYear(),0,1);
+  const week=Math.ceil((((d-onejan)/86400000)+onejan.getDay()+1)/7);
+  return d.getFullYear()+'-W'+week;
+}
+function _pickN(pool, n){
+  const copy=[...pool].sort(()=>Math.random()-0.5);
+  // Avoid duplicate types within the same daily set where possible.
+  const out=[], usedTypes=new Set();
+  for(const q of copy){ if(out.length>=n) break; if(!usedTypes.has(q.type)){ out.push(q); usedTypes.add(q.type); } }
+  while(out.length<n && copy.length){ out.push(copy[out.length%copy.length]); } // fallback
+  return out.slice(0,n).map(q=>({...q, progress:0, done:false, claimed:false}));
+}
+// Roll fresh quests when the day/week changes. Safe to call often.
+function _ensureQuests(){
+  if(!state.quests) state.quests={daily:[],weekly:[],dailyDate:'',weeklyDate:''};
+  const today=_todayStr(), week=_weekStr();
+  let changed=false;
+  if(state.quests.dailyDate!==today || !Array.isArray(state.quests.daily) || !state.quests.daily.length){
+    state.quests.daily=_pickN(DAILY_QUEST_POOL,3);
+    state.quests.dailyDate=today;
+    changed=true;
+  }
+  if(state.quests.weeklyDate!==week || !Array.isArray(state.quests.weekly) || !state.quests.weekly.length){
+    state.quests.weekly=_pickN(WEEKLY_QUEST_POOL,1);
+    state.quests.weeklyDate=week;
+    changed=true;
+  }
+  if(changed) saveState();
+}
+// Report gameplay progress. Called from collect/squeeze/etc. Increments every
+// matching active quest, auto-completes + rewards, and celebrates.
+function _questProgress(type, n){
+  if(!state.quests) return;
+  n=n||1;
+  let any=false;
+  [...(state.quests.daily||[]), ...(state.quests.weekly||[])].forEach(q=>{
+    if(q.done || q.type!==type) return;
+    q.progress=Math.min(q.goal,(q.progress||0)+n);
+    any=true;
+    if(q.progress>=q.goal && !q.done){
+      q.done=true; q.claimed=true;
+      addCoins(q.coins); addXP(q.xp, 'quest');
+      _celebrateQuest(q);
+    }
+  });
+  if(any){ saveState(); updateCoinDisplay(); _refreshEventsIfOpen(); }
+}
+function _celebrateQuest(q){
+  haptic(HAP.milestone);
+  setTimeout(()=>showToast('✅ Quest done: '+q.label+'  +'+q.coins+'🪙'), 300);
+}
+function _refreshEventsIfOpen(){
+  const sc=document.getElementById('screen-events');
+  if(sc && sc.classList.contains('active')) buildEvents();
+}
+
 // ===== EVENTS =====
 function buildEvents(){
+  _ensureQuests();
   const today=new Date().toDateString();
   const claimed=state.lastDailyGift===today;
   const day=state.dailyGiftDay||0;
+
+  function questCard(q, isWeekly){
+    const pct=Math.min(100,Math.round((q.progress/q.goal)*100));
+    const done=q.done;
+    const barCol=isWeekly?'linear-gradient(90deg,#B57BEE,#9C5DE0)':'linear-gradient(90deg,#FF8FAB,#FF6B8A)';
+    const accent=isWeekly?'#9C5DE0':'#FF6B8A';
+    return `<div style="background:${done?'#F0FFF4':'white'};border-radius:14px;padding:11px 13px;border:1.5px solid ${done?'#9AE6B4':'rgba(0,0,0,0.06)'};display:flex;align-items:center;gap:11px;margin-bottom:8px">
+      <span style="font-size:24px;flex-shrink:0">${done?'✅':q.icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12.5px;font-weight:800;color:${done?'#2F855A':'#2D1B00'};margin-bottom:5px">${q.label}</div>
+        <div style="display:flex;align-items:center;gap:7px">
+          <div style="flex:1;height:7px;background:#EFEAF5;border-radius:5px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${done?'#48BB78':barCol};border-radius:5px;transition:width 0.3s"></div></div>
+          <div style="font-size:10px;font-weight:800;color:${done?'#48BB78':accent};white-space:nowrap">${done?'Done!':q.progress+'/'+q.goal}</div>
+        </div>
+      </div>
+      <div style="font-size:11px;font-weight:900;color:${done?'#AAA':'#FF9F43'};white-space:nowrap;flex-shrink:0">+${q.coins}🪙</div>
+    </div>`;
+  }
+
+  const dailies=(state.quests.daily||[]).map(q=>questCard(q,false)).join('');
+  const weeklies=(state.quests.weekly||[]).map(q=>questCard(q,true)).join('');
+  const dailyDone=(state.quests.daily||[]).filter(q=>q.done).length;
+  const dailyTotal=(state.quests.daily||[]).length;
+
+  let html=`
+  <div style="margin:12px 16px;background:white;border-radius:20px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.07)">
+    <div style="background:linear-gradient(135deg,#FF8FAB,#FF6B8A);padding:16px 20px 12px">
+      <div style="font-size:17px;font-weight:900;color:white">⭐ Today's Quests</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.9);margin-top:2px">${dailyDone}/${dailyTotal} done — new quests every day!</div>
+    </div>
+    <div style="padding:12px 14px">${dailies}</div>
+  </div>
+
+  <div style="margin:12px 16px;background:white;border-radius:20px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.07)">
+    <div style="background:linear-gradient(135deg,#B57BEE,#9C5DE0);padding:14px 20px 11px">
+      <div style="font-size:15px;font-weight:900;color:white">🏆 Weekly Challenge</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.9);margin-top:2px">A bigger goal — resets each week</div>
+    </div>
+    <div style="padding:12px 14px">${weeklies}</div>
+  </div>`;
+
   let calHtml='';
   for(let i=0;i<30;i++){
     const d=i+1,g=DAILY_GIFTS[i];
-    const done=d<=day;
+    const dn=d<=day;
     const isNext=!claimed&&d===day+1;
     const isSquishy=g.type==='squishy';
-    const bgColor=done?'#E8F5E9':isNext?'linear-gradient(135deg,#FFD166,#FF9F43)':isSquishy?'#FFF0F6':'#F5F5F5';
-    const bdrColor=done?'#81C784':isNext?'#FF9F43':isSquishy?'#FFB3C6':'#EEE';
-    const txtColor=done?'#2E7D32':isNext?'white':isSquishy?'#FF6B8A':'#BBB';
+    const bgColor=dn?'#E8F5E9':isNext?'linear-gradient(135deg,#FFD166,#FF9F43)':isSquishy?'#FFF0F6':'#F5F5F5';
+    const bdrColor=dn?'#81C784':isNext?'#FF9F43':isSquishy?'#FFB3C6':'#EEE';
+    const txtColor=dn?'#2E7D32':isNext?'white':isSquishy?'#FF6B8A':'#BBB';
     calHtml+='<div style="width:44px;height:50px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:9px;font-weight:800;cursor:'+(isNext?'pointer':'default')+';background:'+bgColor+';color:'+txtColor+';border:2px solid '+bdrColor+';'+(isNext?'box-shadow:0 4px 12px rgba(255,159,67,0.5);transform:scale(1.08)':'')+'" '+(isNext?'onclick="claimDailyGift()"':'')+'>'+
-      '<span style="font-size:'+(done||isNext?16:13)+'px">'+(done?'✓':g.icon)+'</span>'+
+      '<span style="font-size:'+(dn||isNext?16:13)+'px">'+(dn?'✓':g.icon)+'</span>'+
       '<span>'+d+'</span></div>';
   }
   const nextGift=DAILY_GIFTS[Math.min(29,day)];
-  const content=document.getElementById('events-content');
-  let html=`
+  html+=`
   <div style="margin:12px 16px;background:white;border-radius:20px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.07)">
     <div style="background:linear-gradient(135deg,#FFD166,#FF9F43);padding:16px 20px 12px">
       <div style="font-size:17px;font-weight:900;color:white">🎁 Daily Gift Calendar</div>
@@ -10601,31 +10777,10 @@ function buildEvents(){
     </div>
     <div style="padding:12px 10px;display:grid;grid-template-columns:repeat(6,44px);gap:5px;justify-content:center">${calHtml}</div>
     ${!claimed&&day<30?`<div style="padding:0 16px 16px"><div style="background:#FFF8E8;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px"><span style="font-size:30px">${nextGift.icon}</span><div style="flex:1"><div style="font-size:13px;font-weight:800;color:#2D1B00">Day ${day+1}: ${nextGift.label}</div><div style="font-size:12px;color:#888;margin-top:2px">${nextGift.desc}</div></div><button onclick="claimDailyGift()" style="background:linear-gradient(135deg,#FFD166,#FF9F43);color:white;border:none;padding:10px 16px;border-radius:20px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;box-shadow:0 3px 10px rgba(255,159,67,0.4)">Claim!</button></div></div>`:''}
-  </div>`;
-  EVENTS.forEach(ev=>{
-    const _st = _eventStatus(ev);
-    const isLive = _st==='live';
-    const isSoon = _st==='soon';
-    const statusBadge = isLive ? '🔴 LIVE' : isSoon ? '🔵 SOON' : '⚫ Ended';
-    const boostChip = isLive&&ev.family ? `<span style="font-size:11px;font-weight:800;background:#E8F5E9;color:#2E7D32;padding:3px 10px;border-radius:20px">⬆ ${ev.boost}× ${ev.family}</span>` : '';
-    const _daysLeft = _eventDaysLeft();
-    const _timeLabel = isLive ? (_daysLeft<=1?'Ends today!':_daysLeft+' days left') : isSoon ? 'Coming soon' : 'Ended';
-    html+=`<div class="event-card" style="opacity:${_st==='ended'?'0.6':'1'}">
-      <div class="event-banner" style="background:${ev.bg}">
-        <span style="font-size:44px;line-height:1">${ev.banner}</span>
-        ${isLive?`<div style="position:absolute;top:10px;right:12px;background:rgba(255,80,50,0.9);color:white;font-size:10px;font-weight:900;padding:3px 10px;border-radius:20px">🔴 LIVE</div>`:''}
-      </div>
-      <div class="event-body">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-          <div class="event-name">${ev.name}</div>
-          <span style="font-size:11px;font-weight:700;color:#AAA;white-space:nowrap;margin-top:3px">${_timeLabel}</span>
-        </div>
-        <div class="event-desc">${ev.desc}</div>
-        ${boostChip ? `<div style="margin-top:8px">${boostChip}</div>` : ''}
-      </div>
-    </div>`;
-  });
-  content.innerHTML=html;
+  </div>
+  <div style="height:calc(var(--nav-h) + 30px)" aria-hidden="true"></div>`;
+
+  document.getElementById('events-content').innerHTML=html;
 }
 
 
@@ -10743,6 +10898,8 @@ function _luckyRoll(){
   saveState();
   updateCoinDisplay();
   buildTrade();
+  _questProgress('lucky',1);
+  _questProgress('trade',1);
   _mysteryReveal(winner);
 }
 
@@ -10779,6 +10936,7 @@ function _convertDupes(tierIdx){
 
   // Open squish play for the converted squishy
   state.badges.add('trader');
+  _questProgress('trade',1);
   saveState();
   updateCoinDisplay();
   buildTrade();
@@ -10864,8 +11022,17 @@ function buildProfile(){
   document.getElementById('stat-collected').textContent=state.collected.length;
   document.getElementById('stat-streak').textContent=state.streak||0;
   document.getElementById('stat-squeezes').textContent=state.totalSqueezes;
-  document.getElementById('avatar-ring').textContent=state.avatar;
-  document.getElementById('profile-name').textContent=state.name;
+  // Completion % (against the 42 collectible squishies)
+  const _total=SQUISHIES.filter(s=>s.rarity!=='pro'&&s.rarity!=='free').length;
+  const _pct=_total>0?Math.round((state.collected.length/_total)*100):0;
+  const _compEl=document.getElementById('stat-completion'); if(_compEl)_compEl.textContent=_pct+'%';
+  // Badges earned (out of all available)
+  const _badgeEl=document.getElementById('stat-badges'); if(_badgeEl)_badgeEl.textContent=(state.badges?state.badges.size:0)+'/'+BADGES.length;
+  // Bonds maxed (friendship Lv 10 = 28 squeezes) among collected squishies
+  const _bonds=Object.entries(state.friendship||{}).filter(([id,sq])=>state.collected.includes(id)&&sq>=27).length;
+  const _bondEl=document.getElementById('stat-bonds'); if(_bondEl)_bondEl.textContent=_bonds;
+  _renderAvatar();
+  document.getElementById('profile-name').innerHTML=_escapeHtml(state.name)+' <span style="font-size:14px;opacity:0.7">✏️</span>';
 
   // XP + level system
   const {cur, next, pct} = getLevelInfo(state.xp||0);
@@ -10895,7 +11062,7 @@ function buildProfile(){
         const lvl=Math.min(10,Math.floor(squeezes/3)+1);
         bfHtml+=`<div onclick="openSquishInfo('${id}')" style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;min-width:64px">
           <canvas id="bf-${id}" width="56" height="56" style="border-radius:50%;background:#FFF0F6"></canvas>
-          <div style="font-size:9px;font-weight:800;color:#2D1B00;text-align:center;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sq.name}</div>
+          <div style="font-size:9px;font-weight:800;color:#2D1B00;text-align:center;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escapeHtml(squishDisplayName(sq))}</div>
           <div style="font-size:9px;font-weight:700;color:#FF8FAB">Lv ${lvl} 💛</div>
         </div>`;
       });
@@ -10918,12 +11085,21 @@ function buildProfile(){
   let html='';
   BADGES.forEach(b=>{
     const earned=state.badges.has(b.id);
-    html+=`<div class="badge-item ${earned?'':'locked'}" title="${b.desc}">
+    html+=`<div class="badge-item ${earned?'':'locked'}" onclick="_showBadgeInfo('${b.id}')" style="cursor:pointer">
       <div class="badge-icon">${b.icon}</div>
       <div class="badge-name">${b.name}</div>
     </div>`;
   });
   grid.innerHTML=html;
+}
+
+// Tap a badge to see what it is and how to earn it (touch-friendly — the old
+// hover `title` tooltip never showed on phones).
+function _showBadgeInfo(id){
+  const b=BADGES.find(x=>x.id===id);
+  if(!b) return;
+  const earned=state.badges.has(id);
+  showToast((earned?'✅ ':'🔒 ')+b.icon+' '+b.name+' — '+b.desc);
 }
 
 
@@ -10966,17 +11142,23 @@ function checkAchievements(){
   if(state.streak>=3) state.badges.add('streak3');
   if(state.streak>=7) state.badges.add('streak7');
   if((state.dailyGiftDay||0)>=30) state.badges.add('daily30');
-  if([...state.spotsVisited].length>=5) state.badges.add('explorer');
+  // (Explorer badge is granted when the treehouse appears after full park
+  // exploration — see drawSquirrelHome. The old spotsVisited>=5 check was dead
+  // code: the Set was never populated, so it's removed.)
   // Speed Squisher — collected 10+ squishies (session activity proxy)
   if(c>=10) state.badges.add('speed');
   // Family complete
   FAMILIES.forEach(fam=>{
     const members=SQUISHIES.filter(s=>s.family===fam.id);
-    if(members.every(s=>state.collected.includes(s.id))) state.badges.add('family');
+    if(members.every(s=>state.collected.includes(s.id))){
+      const had=state.badges.has('family');
+      state.badges.add('family');
+      if(!had && typeof _questProgress==='function') _questProgress('family',1); // first family completion this check
+    }
   });
   // End-game friendship grind: Lv 10 needs 28 squeezes (floor(28/3)+1 = 10).
   const maxedFriends = Object.entries(state.friendship||{})
-    .filter(([id,sq])=>state.collected.includes(id) && sq>=28).length;
+    .filter(([id,sq])=>state.collected.includes(id) && sq>=27).length;
   if(maxedFriends>=1) state.badges.add('bff');
   if(maxedFriends>=10) state.badges.add('soulmates');
   saveState();
@@ -10984,13 +11166,132 @@ function checkAchievements(){
 
 
 // ===== AVATAR =====
+// ── Avatar = a collected squishy, drawn in the app's real art style ──
+// state.avatar holds either a squishy id (e.g. 'pelmeni') OR a legacy emoji
+// string (old saves). _avatarSquishy() resolves to the chosen squishy object,
+// or null if none is set / the player hasn't collected it.
+function _avatarSquishy(){
+  const a=state.avatar;
+  if(!a || typeof a!=='string') return null;
+  const sq=SQUISHIES.find(s=>s.id===a);
+  if(sq && state.collected.includes(sq.id)) return sq;
+  return null;
+}
+// Draw the current avatar into the profile ring canvas. If no squishy is set
+// (brand-new player) draw a friendly default squirrel face in the same style.
+function _renderAvatar(){
+  const c=document.getElementById('avatar-canvas');
+  if(!c) return;
+  const dpr=window.devicePixelRatio||1;
+  c.width=Math.round(76*dpr); c.height=Math.round(76*dpr);
+  c.style.width='76px'; c.style.height='76px';
+  const ctx=c.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,76,76);
+  const sq=_avatarSquishy();
+  if(sq && typeof _safeDraw==='function'){
+    _safeDraw(ctx, sq, 38, 40, 30, 40);
+  } else {
+    _drawDefaultAvatar(ctx, 38, 40, 30);
+  }
+}
+// A simple, on-brand squirrel face for players who haven't picked a squishy yet.
+function _drawDefaultAvatar(ctx, cx, cy, r){
+  ctx.save();
+  // ears
+  ctx.fillStyle='#B5712E';
+  [[-0.6,-0.85],[0.6,-0.85]].forEach(([ex,ey])=>{ctx.beginPath();ctx.ellipse(cx+ex*r,cy+ey*r,r*0.28,r*0.34,0,0,Math.PI*2);ctx.fill();});
+  ctx.fillStyle='#D89352';
+  [[-0.6,-0.82],[0.6,-0.82]].forEach(([ex,ey])=>{ctx.beginPath();ctx.ellipse(cx+ex*r,cy+ey*r,r*0.15,r*0.2,0,0,Math.PI*2);ctx.fill();});
+  // head
+  const g=ctx.createRadialGradient(cx-r*0.25,cy-r*0.3,r*0.1,cx,cy,r);
+  g.addColorStop(0,'#E0A864');g.addColorStop(1,'#C8843C');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,r*0.92,0,Math.PI*2);ctx.fill();
+  // muzzle
+  ctx.fillStyle='#F5E2C0';ctx.beginPath();ctx.ellipse(cx,cy+r*0.28,r*0.5,r*0.4,0,0,Math.PI*2);ctx.fill();
+  // eyes
+  ctx.fillStyle='#3A2410';
+  [[-0.35,-0.12],[0.35,-0.12]].forEach(([ex,ey])=>{ctx.beginPath();ctx.arc(cx+ex*r,cy+ey*r,r*0.13,0,Math.PI*2);ctx.fill();});
+  ctx.fillStyle='#fff';
+  [[-0.31,-0.16],[0.39,-0.16]].forEach(([ex,ey])=>{ctx.beginPath();ctx.arc(cx+ex*r,cy+ey*r,r*0.045,0,Math.PI*2);ctx.fill();});
+  // nose
+  ctx.fillStyle='#5A3A1A';ctx.beginPath();ctx.ellipse(cx,cy+r*0.12,r*0.1,r*0.08,0,0,Math.PI*2);ctx.fill();
+  // cheeks
+  ctx.fillStyle='rgba(255,150,150,0.4)';
+  [[-0.5,0.18],[0.5,0.18]].forEach(([ex,ey])=>{ctx.beginPath();ctx.arc(cx+ex*r,cy+ey*r,r*0.14,0,Math.PI*2);ctx.fill();});
+  ctx.restore();
+}
+
 function buildAvatarGrid(){
   const grid=document.getElementById('avatar-grid');
-  grid.innerHTML=AVATARS.map(a=>`<div class="avatar-option" onclick="pickAvatar('${a}')">${a}</div>`).join('');
+  const collected=SQUISHIES.filter(s=>state.collected.includes(s.id));
+  if(!collected.length){
+    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:24px 12px;color:#AAA"><div style="font-size:36px">🐾</div><div style="font-size:14px;font-weight:800;margin-top:8px;color:#888">Collect a squishy first!</div><div style="font-size:12px;margin-top:4px">Your favorites can become your avatar.</div></div>';
+    return;
+  }
+  // Rarest first so a kid's best squishies lead.
+  const RARITY_ORDER={mythic:0,legendary:1,epic:2,rare:3,uncommon:4,common:5};
+  collected.sort((a,b)=>(RARITY_ORDER[a.rarity]??9)-(RARITY_ORDER[b.rarity]??9));
+  const cur=state.avatar;
+  grid.innerHTML=collected.map(sq=>{
+    const sel=sq.id===cur;
+    return `<div class="avatar-option ${sel?'avatar-selected':''}" onclick="pickAvatar('${sq.id}')" style="position:relative">
+      <canvas id="av-pick-${sq.id}" width="48" height="48" style="width:48px;height:48px"></canvas>
+      ${sel?'<div style="position:absolute;top:2px;right:2px;font-size:13px">✓</div>':''}
+    </div>`;
+  }).join('');
+  requestAnimationFrame(()=>{
+    collected.forEach(sq=>{
+      const c=document.getElementById('av-pick-'+sq.id);if(!c)return;
+      const dpr=window.devicePixelRatio||1;
+      c.width=Math.round(48*dpr);c.height=Math.round(48*dpr);
+      c.style.width='48px';c.style.height='48px';
+      const ctx=c.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
+      ctx.clearRect(0,0,48,48);
+      _safeDraw(ctx,sq,24,26,19,sq.id.charCodeAt(0)*7);
+    });
+  });
 }
 function openAvatarPicker(){document.getElementById('avatar-modal').className='show';buildAvatarGrid();}
 function closeAvatarPicker(){document.getElementById('avatar-modal').className='';}
-function pickAvatar(a){state.avatar=a;saveState();buildProfile();closeAvatarPicker();showToast(`Avatar updated! ${a}`);}
+function pickAvatar(id){
+  const sq=SQUISHIES.find(s=>s.id===id);
+  if(!sq || !state.collected.includes(id)) return;
+  state.avatar=id;saveState();buildProfile();closeAvatarPicker();
+  showToast(`Avatar set to ${squishDisplayName(sq)}! 💛`);
+}
+
+// ── Player name editing (reuses the squishy-name profanity filter, 16 chars) ──
+function _validatePlayerName(raw){
+  let s=(raw||'').replace(/[^A-Za-z0-9 '\-]/g,'').replace(/\s+/g,' ').trim();
+  if(s.length<1) return {ok:false, reason:'Please enter a name.'};
+  if(s.length>16) s=s.slice(0,16).trim();
+  const low=s.toLowerCase();
+  if(typeof NAME_BLOCKLIST!=='undefined' && NAME_BLOCKLIST.some(w=>low.includes(w))) return {ok:false, reason:'Please pick a different name.'};
+  return {ok:true, value:s};
+}
+function openNamePicker(){
+  const modal=document.getElementById('player-name-modal');
+  if(!modal) return;
+  const input=document.getElementById('player-name-input');
+  input.value = (state.name && state.name!=='Squish Explorer') ? state.name : '';
+  document.getElementById('player-name-error').textContent='';
+  modal.style.display='flex';
+  setTimeout(()=>{ try{ input.focus(); }catch(e){} }, 100);
+}
+function _closeNamePicker(){
+  const modal=document.getElementById('player-name-modal');
+  if(modal) modal.style.display='none';
+}
+function _savePlayerName(){
+  const raw=document.getElementById('player-name-input').value;
+  const res=_validatePlayerName(raw);
+  if(!res.ok){ document.getElementById('player-name-error').textContent=res.reason; return; }
+  state.name=res.value;
+  saveState();
+  _closeNamePicker();
+  buildProfile();
+  showToast('💛 Name updated!');
+}
 
 
 // ===== PARENT SETTINGS =====
@@ -11129,6 +11430,7 @@ function startGame(){
     state.streak=1;
   }
   state.lastVisit=today;
+  if(typeof _ensureQuests==='function') _ensureQuests();
   checkAchievements();
   saveState();
   // Show daily gift popup if unclaimed today
