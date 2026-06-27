@@ -1184,7 +1184,7 @@ try {
       // is defined later in the file, so we use an explicit id set here.
       // Keep this set in sync as kitchen items are added.
       try{
-        const KITCHEN_IDS=new Set(['cookie_jar','mixing_bowl','step_stool','pancake_griddle','juice_blender','tea_set','toaster','fruit_bowl','candy_fountain','magic_oven']);
+        const KITCHEN_IDS=new Set(['cookie_jar','mixing_bowl','step_stool','pancake_griddle','juice_blender','tea_set','toaster','fruit_bowl','candy_fountain','magic_oven','cake_station']);
         if(Array.isArray(state.placedFurniture)){
           const _strays=state.placedFurniture.filter(p=>KITCHEN_IDS.has(p.id));
           if(_strays.length){
@@ -4767,6 +4767,7 @@ const FURNITURE_CATALOGUE = [
   // ─── PREMIUM (paid) kitchen showstoppers ───
   {id:'candy_fountain', name:'Candy Fountain', icon:'🍬', cost:0, rarity:'premium', theme:'Kitchen', slot:'table_top', desc:'Squishies gather at the flowing candy fountain!', room:'kitchen', premium:true},
   {id:'magic_oven', name:'Magic Oven', icon:'🔮', cost:0, rarity:'premium', theme:'Kitchen', slot:'table_top', desc:'Watch treats magically bake inside!', room:'kitchen', premium:true},
+  {id:'cake_station', name:'Birthday Cake Station', icon:'🎂', cost:0, rarity:'premium', theme:'Kitchen', slot:'table_top', desc:'Squishies gather for a birthday party!', room:'kitchen', premium:true},
 ];
 
 // ── HOME ROOM RENDERER ──
@@ -4954,6 +4955,7 @@ function _paintRoom(ctx,W,H,t){
     _toasterActiveNext=false;
     _fruitBowlActiveNext=false;
     _magicOvenActiveNext=false;
+    _cakeStationActiveNext=false;
     residents.forEach(function(r){
       _guardedDraw(ctx, function(){
         const ai=_getResAI(r.id,r.x,r.y);
@@ -5010,6 +5012,7 @@ function _paintRoom(ctx,W,H,t){
   _toasterActive=_toasterActiveNext;
   _fruitBowlActive=_fruitBowlActiveNext;
   _magicOvenActive=_magicOvenActiveNext;
+  _cakeStationActive=_cakeStationActiveNext;
   if(_teaPourTimer>0) _teaPourTimer--;
 
   // ── Squirrel movement ──
@@ -6964,6 +6967,161 @@ function _drawFurnitureInRoom(ctx,W,H,t){
       return;
     }
 
+    // ── KITCHEN: Birthday Cake Station (PREMIUM) ──
+    if(item.id==='cake_station'){
+      const cw=W*0.14, ch=H*0.15;
+      const cx=px, baseY=py;
+      const active=!!_cakeStationActive;
+      const partyI = active ? 1 : 0.6; // always celebratory, more when gathered
+      ctx.save();
+      // Always-on party AURA — a soft warm festive glow so the cake reads as a
+      // showstopper from across the room even before squishies gather.
+      const auraPulse=0.5+0.5*Math.sin(t*0.07);
+      const aura=ctx.createRadialGradient(cx,baseY-ch*0.5,cw*0.2,cx,baseY-ch*0.5,cw*0.95);
+      aura.addColorStop(0,`hsla(${(t*0.5)%360},90%,72%,${(0.10+partyI*0.14)*(0.7+auraPulse*0.3)})`);
+      aura.addColorStop(1,'hsla(330,90%,65%,0)');
+      ctx.fillStyle=aura;
+      ctx.beginPath();ctx.ellipse(cx,baseY-ch*0.5,cw*0.95,ch*0.7,0,0,Math.PI*2);ctx.fill();
+      // Contact shadow
+      const sh=ctx.createRadialGradient(cx,baseY,1,cx,baseY,cw*0.6);
+      sh.addColorStop(0,'rgba(0,0,0,0.20)');sh.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=sh;ctx.beginPath();ctx.ellipse(cx,baseY,cw*0.55,H*0.014,0,0,Math.PI*2);ctx.fill();
+
+      // Cake plate
+      ctx.fillStyle='#E8E0EC';
+      ctx.beginPath();ctx.ellipse(cx,baseY-ch*0.02,cw*0.52,ch*0.05,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#CFC4D6';
+      ctx.beginPath();ctx.ellipse(cx,baseY-ch*0.005,cw*0.52,ch*0.04,0,0,Math.PI);ctx.fill();
+
+      // Three cake tiers (bottom widest). Vibrant party palette — rich, glossy
+      // frosting over a warm chocolate-cream sponge so the colors pop. Each tier
+      // frosting has a top-light gradient (frost → frostLo) for a shiny look.
+      const tiers=[
+        {y:baseY-ch*0.05, w:cw*0.46, h:ch*0.22, body:'#7A4A2E', frost:'#FF3D7F', frostLo:'#C71D5A'}, // raspberry
+        {y:baseY-ch*0.27, w:cw*0.34, h:ch*0.20, body:'#5A3A22', frost:'#1FD1C7', frostLo:'#0E9C97'}, // teal
+        {y:baseY-ch*0.47, w:cw*0.22, h:ch*0.18, body:'#7A4A2E', frost:'#FFC93C', frostLo:'#F2A115'}, // golden
+      ];
+      tiers.forEach(tr=>{
+        const top=tr.y-tr.h;
+        // sponge body (rounded rectangle) with a soft vertical shade
+        const bodyG=ctx.createLinearGradient(cx,top,cx,tr.y);
+        bodyG.addColorStop(0,tr.body);bodyG.addColorStop(1,'#3E2817');
+        ctx.fillStyle=bodyG;
+        ctx.beginPath();ctx.roundRect(cx-tr.w, top, tr.w*2, tr.h, [3,3,2,2]);ctx.fill();
+        // glossy frosting cap with drips (gradient: bright top → deeper bottom)
+        const frostG=ctx.createLinearGradient(cx,top-tr.h*0.1,cx,top+tr.h*0.3);
+        frostG.addColorStop(0,tr.frost);frostG.addColorStop(1,tr.frostLo);
+        ctx.fillStyle=frostG;
+        ctx.beginPath();
+        ctx.moveTo(cx-tr.w, top+tr.h*0.18);
+        ctx.lineTo(cx-tr.w, top);
+        ctx.lineTo(cx+tr.w, top);
+        ctx.lineTo(cx+tr.w, top+tr.h*0.18);
+        const drips=5;
+        for(let d=drips;d>=0;d--){
+          const dx2=cx-tr.w + (tr.w*2)*(d/drips);
+          const dy2=top+tr.h*0.18 + ((d%2===0)?tr.h*0.14:0);
+          ctx.quadraticCurveTo(dx2, dy2+tr.h*0.06, dx2-(tr.w*2/drips/2), top+tr.h*0.18);
+        }
+        ctx.closePath();ctx.fill();
+        // top frosting ellipse (rich)
+        ctx.fillStyle=tr.frost;
+        ctx.beginPath();ctx.ellipse(cx,top,tr.w,tr.h*0.13,0,0,Math.PI*2);ctx.fill();
+        // glossy highlight streak on the frosting
+        ctx.fillStyle='rgba(255,255,255,0.5)';
+        ctx.beginPath();ctx.ellipse(cx-tr.w*0.3,top-tr.h*0.02,tr.w*0.34,tr.h*0.05,0,0,Math.PI*2);ctx.fill();
+        // colorful sprinkles on the body — brighter, more of them
+        const sprinkleCols=['#FFFFFF','#FFE14D','#54C7EC','#FF6B8A','#9B5DE5','#5BE584'];
+        for(let s=0;s<7;s++){
+          ctx.fillStyle=sprinkleCols[s%sprinkleCols.length];
+          const sxp=cx-tr.w*0.75 + (tr.w*1.5)*(s/6);
+          const syp=top+tr.h*0.5+((s%3)*tr.h*0.18);
+          ctx.save();ctx.translate(sxp,syp);ctx.rotate(s*0.9);
+          ctx.fillRect(-cw*0.013,-cw*0.004,cw*0.026,cw*0.008);ctx.restore();
+        }
+      });
+
+      // Sparkler candles on the top tier — the WOW. Each sparkler glows and
+      // shoots crackling sparks in all directions, always on, bigger when active.
+      const topTierY=tiers[2].y-tiers[2].h;
+      const candleCols=['#FF6B8A','#54C7EC','#FFD166'];
+      const sparkCols=['#FFF7C0','#FFD166','#FFB347','#FF8FB0','#B6E0FF'];
+      for(let c=0;c<3;c++){
+        const cxp=cx+(c-1)*cw*0.11;
+        const candleBaseY=topTierY;
+        const candleH=ch*0.13;
+        // candle stick (striped)
+        ctx.fillStyle=candleCols[c];
+        ctx.fillRect(cxp-cw*0.013, candleBaseY-candleH, cw*0.026, candleH);
+        ctx.fillStyle='rgba(255,255,255,0.75)';
+        ctx.fillRect(cxp-cw*0.013, candleBaseY-candleH*0.7, cw*0.026, cw*0.006);
+        ctx.fillRect(cxp-cw*0.013, candleBaseY-candleH*0.4, cw*0.026, cw*0.006);
+        const tipX=cxp, tipY=candleBaseY-candleH;
+        // glowing halo at the sparkler tip
+        const glowR=cw*(active?0.10:0.075)*(0.85+0.15*Math.sin(t*0.5+c));
+        const halo=ctx.createRadialGradient(tipX,tipY,0.5,tipX,tipY,glowR);
+        halo.addColorStop(0,'rgba(255,250,210,0.95)');
+        halo.addColorStop(0.5,'rgba(255,200,90,0.5)');
+        halo.addColorStop(1,'rgba(255,160,40,0)');
+        ctx.fillStyle=halo;
+        ctx.beginPath();ctx.arc(tipX,tipY,glowR,0,Math.PI*2);ctx.fill();
+        // crackling sparks shooting outward (the sparkler effect)
+        const sparkN=active?9:6;
+        for(let s=0;s<sparkN;s++){
+          // each spark has a pseudo-random angle and an animated length that
+          // pops out and fades, offset per spark so they crackle independently
+          const seed=c*7+s*13;
+          const ang=(seed*2.39996)+Math.sin(t*0.08+seed)*0.5; // golden-angle spread
+          const phase=((t*0.05)+(seed%10)/10)%1;
+          const len=cw*(active?0.16:0.12)*(0.3+phase*0.7);
+          const sxp=tipX+Math.cos(ang)*len;
+          const syp=tipY+Math.sin(ang)*len*0.9;
+          const alpha=(1-phase)*(active?1:0.8);
+          ctx.fillStyle=sparkCols[(s+c)%sparkCols.length].replace(')',`)`);
+          ctx.globalAlpha=alpha;
+          ctx.beginPath();ctx.arc(sxp,syp,cw*0.012*(1-phase*0.5),0,Math.PI*2);ctx.fill();
+          // little tail line back toward the tip
+          ctx.strokeStyle=sparkCols[(s+c)%sparkCols.length];ctx.lineWidth=cw*0.006;ctx.globalAlpha=alpha*0.6;
+          ctx.beginPath();ctx.moveTo(sxp,syp);ctx.lineTo(tipX+Math.cos(ang)*len*0.6,tipY+Math.sin(ang)*len*0.55);ctx.stroke();
+        }
+        ctx.globalAlpha=1;
+        // bright white-hot core at the tip
+        ctx.fillStyle='#FFFFFF';
+        ctx.beginPath();ctx.arc(tipX,tipY,cw*0.018*(0.85+0.15*Math.sin(t*0.6+c)),0,Math.PI*2);ctx.fill();
+      }
+
+      // Confetti — a gentle few always falling, a full burst at PARTY time.
+      const confCols=['#FF6B8A','#54C7EC','#FFD166','#9B5DE5','#3FA34D','#FF9EC4'];
+      const confN=active?12:5;
+      for(let i=0;i<confN;i++){
+        const prog=((t*0.02)+i/confN)%1;
+        const cxp=cx+(((i*53)%100)/100-0.5)*cw*1.8;
+        const cyp=(baseY-ch*1.0)+prog*ch*1.0;
+        ctx.save();ctx.translate(cxp,cyp);ctx.rotate(t*0.1+i);
+        ctx.globalAlpha=active?1:0.75;
+        ctx.fillStyle=confCols[i%confCols.length];
+        ctx.fillRect(-cw*0.012,-cw*0.012,cw*0.024,cw*0.024);
+        ctx.restore();
+      }
+      // floating party sparkles around the cake (always a couple, more at party)
+      const spN=active?3:2;
+      for(let i=0;i<spN;i++){
+        const ang=t*0.05+i*(Math.PI*2/spN);
+        const spx=cx+Math.cos(ang)*cw*0.55;
+        const spy=baseY-ch*0.6+Math.sin(ang)*ch*0.4;
+        const tw=(Math.sin(t*0.2+i)*0.5+0.5);
+        ctx.fillStyle=`rgba(255,255,180,${0.4+tw*0.5})`;
+        ctx.font=`${cw*0.11}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('✨',spx,spy);
+      }
+      ctx.restore();
+      if(_movingFurnitureId===p.id||_placingFurnitureId===p.id){
+        ctx.save();ctx.strokeStyle='#D4AF37';ctx.lineWidth=2.5;ctx.setLineDash([4,3]);
+        ctx.beginPath();ctx.roundRect(cx-cw*0.6,baseY-ch-ch*0.1,cw*1.2,ch*1.2,4);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+      }
+      return;
+    }
+
     // Fallback emoji (should never reach here for known items)
     ctx.save();
     ctx.textAlign='center';ctx.textBaseline='middle';
@@ -7001,7 +7159,7 @@ function _drawFurnitureInRoom(ctx,W,H,t){
         // temporarily swapping the placed list to contain just the ghost. This
         // keeps placement cheap — re-rendering every placed item each frame was
         // causing lag, especially with heavy items like the candy fountain.
-        const DRAWN_FURNITURE=new Set(['lamp_basic','table_basic','rug_basic','rug_star','bed_cozy','step_stool','cookie_jar','mixing_bowl','pancake_griddle','juice_blender','tea_set','toaster','fruit_bowl','candy_fountain','magic_oven']);
+        const DRAWN_FURNITURE=new Set(['lamp_basic','table_basic','rug_basic','rug_star','bed_cozy','step_stool','cookie_jar','mixing_bowl','pancake_griddle','juice_blender','tea_set','toaster','fruit_bowl','candy_fountain','magic_oven','cake_station']);
         if(DRAWN_FURNITURE.has(item.id)){
           const _pf=state.placedFurniture;
           state.placedFurniture=[{id:item.id,x:_placeCursorX,y:_placeCursorY}];
@@ -7222,6 +7380,21 @@ function _tickResAI(ai, id, W, H, t){
         }
       } else ai._baking=false;
     }
+  } else if(ai.state===RES_STATES.EAT && ai.eatTargetId==='cake_station'){
+    const _pf=Array.isArray(state.placedFurniture)?state.placedFurniture:[];
+    const cake=_pf.find(p=>p.id==='cake_station');
+    if(cake){
+      const dx=ai.x-cake.x;
+      if(dx*dx < 0.025){
+        _cakeStationActiveNext=true; ai._baking=true;
+        // It's a party! Celebrate — party popper / star / heart mix.
+        if((ai.bubbleTimer||0) <= 0){
+          const roll=Math.random();
+          ai.bubble = roll<0.5?'party' : roll<0.8?'star' : 'heart';
+          ai.bubbleTimer=50;
+        }
+      } else ai._baking=false;
+    }
   } else if(ai.state===RES_STATES.EAT && ai.eatTargetId==='candy_fountain'){
     const _pf=Array.isArray(state.placedFurniture)?state.placedFurniture:[];
     const cf=_pf.find(p=>p.id==='candy_fountain');
@@ -7262,6 +7435,7 @@ function _tickResAI(ai, id, W, H, t){
     ai._teaServed=false; // reset when they leave, so next visit pours again
     ai._toastReacted=false; // reset toaster reaction latch
     ai.fountainSlot=-1; // free up the candy fountain gather slot
+    ai.cakeSlot=-1; // free up the birthday cake gather slot
     ai._ovenWowed=false; // reset magic oven first-wow reaction
   }
 
@@ -7306,7 +7480,7 @@ function _tickResAI(ai, id, W, H, t){
   // and only when there's a counter appliance present to use.
   let pers = _basePers;
   if(state.currentRoom==='kitchen'){
-    const KITCHEN_USE=new Set(['mixing_bowl','cookie_jar','pancake_griddle','juice_blender','tea_set','toaster','fruit_bowl','candy_fountain','magic_oven']);
+    const KITCHEN_USE=new Set(['mixing_bowl','cookie_jar','pancake_griddle','juice_blender','tea_set','toaster','fruit_bowl','candy_fountain','magic_oven','cake_station']);
     const hasAppliance = placed.some(p=>KITCHEN_USE.has(p.id));
     if(hasAppliance){
       pers = {..._basePers,
@@ -7370,11 +7544,12 @@ function _tickResAI(ai, id, W, H, t){
     ai.bubble='zzz'; ai.bubbleTimer=ai.stateTimer; return;
   }
   cum += pers.eat; if(eatSpots.length && r < cum){ // EAT
-    const COUNTER_ITEMS=new Set(['mixing_bowl','cookie_jar','pancake_griddle','juice_blender','tea_set','toaster','fruit_bowl','candy_fountain','magic_oven']);
+    const COUNTER_ITEMS=new Set(['mixing_bowl','cookie_jar','pancake_griddle','juice_blender','tea_set','toaster','fruit_bowl','candy_fountain','magic_oven','cake_station']);
     // Prefer a counter item if one exists and THIS squishy is the nearest to a
     // free one — that squishy climbs up to use it.
     let chosen=null, useCounter=false, teaGuest=false;
     let fountainSlot=-1; // which of the 3 gather positions this squishy takes
+    let cakeSlot=-1;     // birthday cake gather position
 
     // ── Tea Set: SOCIAL. Allows TWO squishies — a host and a guest. ──
     const teaSpot = eatSpots.find(s=>s.id==='tea_set');
@@ -7416,11 +7591,31 @@ function _tickResAI(ai, id, W, H, t){
       }
     }
 
+    // ── Birthday Cake Station: SOCIAL GATHER. Up to THREE squishies party. ──
+    if(!chosen){
+      const cakeSpot = eatSpots.find(s=>s.id==='cake_station');
+      if(cakeSpot){
+        const taken=new Set();
+        Object.keys(_resAI).forEach(rid=>{
+          if(rid!==id && _resAI[rid].state===RES_STATES.EAT &&
+             _resAI[rid].eatTargetId==='cake_station' && _resAI[rid].cakeSlot>=0){
+            taken.add(_resAI[rid].cakeSlot);
+          }
+        });
+        if(taken.size<3){
+          if(_nearestResidentTo(cakeSpot.x, cakeSpot.y, 'cake_station')===id || taken.size>0){
+            for(let s=0;s<3;s++){ if(!taken.has(s)){ cakeSlot=s; break; } }
+            if(cakeSlot>=0){ chosen=cakeSpot; useCounter=true; }
+          }
+        }
+      }
+    }
+
     if(!chosen){
       // Consider ALL counter items, not just the first. A squishy claims the
       // counter item it is nearest to (and that's free) — so with several
       // appliances out, squishies spread across them instead of ignoring most.
-      const counterSpots = eatSpots.filter(s=>COUNTER_ITEMS.has(s.id) && s.id!=='tea_set' && s.id!=='candy_fountain');
+      const counterSpots = eatSpots.filter(s=>COUNTER_ITEMS.has(s.id) && s.id!=='tea_set' && s.id!=='candy_fountain' && s.id!=='cake_station');
       counterSpots.sort((a,b)=>{
         const da=(ai.x-a.x)**2+(ai.y-a.y)**2, db=(ai.x-b.x)**2+(ai.y-b.y)**2; return da-db;
       });
@@ -7459,6 +7654,15 @@ function _tickResAI(ai, id, W, H, t){
         ai.targetX=Math.max(X_MIN,Math.min(X_MAX,chosen.x + ox));
         ai.targetY=FLOOR_Y_MIN+0.05;
         ai.facing = ox<0 ? 1 : (ox>0 ? -1 : (Math.random()<0.5?1:-1)); // face the fountain
+      } else if(chosen.id==='cake_station'){
+        // Birthday party: up to 3 squishies fan around the cake, facing inward.
+        ai.cakeSlot = cakeSlot;
+        ai.hopReach=false; ai.onStool=false;
+        const offsets=[-0.13, 0.0, 0.13];
+        const ox=offsets[cakeSlot]||0;
+        ai.targetX=Math.max(X_MIN,Math.min(X_MAX,chosen.x + ox));
+        ai.targetY=FLOOR_Y_MIN+0.05;
+        ai.facing = ox<0 ? 1 : (ox>0 ? -1 : (Math.random()<0.5?1:-1));
       } else if(useCounter){
         const stool=placed.find(p=>p.id==='step_stool');
         if(stool){
@@ -7603,6 +7807,8 @@ function _drawResidentBubble(ctx, ai, px, py, sqSize, t){
     const b=1+0.15*Math.abs(Math.sin(t*0.13)); ctx.save(); ctx.translate(bx+1,by-2); ctx.scale(b,b); ctx.fillText('🍬',0,0); ctx.restore();
   } else if(ai.bubble==='magic'){     // magic oven
     const b=1+0.18*Math.abs(Math.sin(t*0.13)); ctx.save(); ctx.translate(bx+1,by-2); ctx.scale(b,b); ctx.fillText('🔮',0,0); ctx.restore();
+  } else if(ai.bubble==='party'){     // birthday cake station
+    const b=1+0.20*Math.abs(Math.sin(t*0.16)); ctx.save(); ctx.translate(bx+1,by-2); ctx.scale(b,b); ctx.fillText('🎉',0,0); ctx.restore();
   }
   ctx.restore();
 }
@@ -7670,7 +7876,7 @@ function _buildShopTab(el){
     } else {
       btn=`<button onclick="_buyFurniture('${item.id}')" ${canAfford?'':'disabled'} style="width:100%;background:${canAfford?'#FF9F43':'#E0E0E0'};border:none;border-radius:12px;padding:7px;font-size:11px;font-weight:800;color:${canAfford?'white':'#AAA'};cursor:${canAfford?'pointer':'default'};margin-top:2px">${item.cost+'🪙'}</button>`;
     }
-    const DRAWN_ITEMS=['lamp_basic','table_basic','rug_basic','rug_star','bed_cozy','step_stool','cookie_jar','mixing_bowl','pancake_griddle','juice_blender','tea_set','toaster','fruit_bowl','candy_fountain','magic_oven'];
+    const DRAWN_ITEMS=['lamp_basic','table_basic','rug_basic','rug_star','bed_cozy','step_stool','cookie_jar','mixing_bowl','pancake_griddle','juice_blender','tea_set','toaster','fruit_bowl','candy_fountain','magic_oven','cake_station'];
     const useCanvas=DRAWN_ITEMS.includes(item.id);
     const iconHtml=useCanvas
       ? `<canvas id="shop-icon-${item.id}" width="56" height="56" style="width:56px;height:56px"></canvas>`
@@ -7973,6 +8179,28 @@ function _buildShopTab(el){
         // sparkle
         ctx.fillStyle='rgba(255,255,255,0.95)';ctx.font='9px serif';ctx.textAlign='center';ctx.textBaseline='middle';
         ctx.fillText('✨',cx+10,oy+8);
+      } else if(item.id==='cake_station'){
+        // Three-tier birthday cake with candles
+        const cx=28, baseY=46;
+        // plate
+        ctx.fillStyle='#E8E0EC';ctx.beginPath();ctx.ellipse(cx,baseY,15,3,0,0,Math.PI*2);ctx.fill();
+        // tiers (bottom to top) — vibrant party colors over chocolate sponge
+        const tiers=[[baseY-3,13,7,'#FF3D7F'],[baseY-10,9,6,'#1FD1C7'],[baseY-16,6,5,'#FFC93C']];
+        tiers.forEach(([ty,w,h,frost])=>{
+          ctx.fillStyle='#6A4028';ctx.beginPath();ctx.roundRect(cx-w,ty-h,w*2,h,[2,2,1,1]);ctx.fill();
+          ctx.fillStyle=frost;ctx.beginPath();ctx.ellipse(cx,ty-h,w,2,0,0,Math.PI*2);ctx.fill();
+          // sprinkles
+          ['#FFFFFF','#FFE14D','#54C7EC'].forEach((sc,si)=>{ctx.fillStyle=sc;ctx.fillRect(cx-w*0.5+si*w*0.5,ty-h*0.5,1.5,1);});
+        });
+        // candles on top
+        const topY=baseY-21;
+        ['#FF6B8A','#54C7EC','#FFD166'].forEach((cc,ci)=>{
+          const cxp=cx+(ci-1)*5;
+          ctx.fillStyle=cc;ctx.fillRect(cxp-1,topY-6,2,6);
+          // flame
+          ctx.fillStyle='#FFB347';ctx.beginPath();ctx.ellipse(cxp,topY-8,1.5,3,0,0,Math.PI*2);ctx.fill();
+          ctx.fillStyle='#FFFDF0';ctx.beginPath();ctx.ellipse(cxp,topY-8,0.6,1.6,0,0,Math.PI*2);ctx.fill();
+        });
       }
     });
   });
@@ -8160,6 +8388,7 @@ let _toasterActive=false, _toasterActiveNext=false;
 let _fruitBowlActive=false, _fruitBowlActiveNext=false;
 let _renderingGhost=false; // true only during the recursive ghost-preview render
 let _magicOvenActive=false, _magicOvenActiveNext=false;
+let _cakeStationActive=false, _cakeStationActiveNext=false;
 // One-shot pour: when a squishy sits at tea, we trigger a brief pour toward its
 // side. _teaPourSide is -1 (left) or 1 (right); _teaPourTimer counts down frames.
 let _teaPourSide=0, _teaPourTimer=0;
