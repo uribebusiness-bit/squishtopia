@@ -587,6 +587,7 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
       <canvas id="si-canvas" width="120" height="120" style="border-radius:50%;background:#F8F8F8;flex-shrink:0"></canvas>
       <div style="flex:1">
         <div id="si-name" style="font-size:22px;font-weight:900;color:#2D1B00;line-height:1.1"></div>
+        <div id="si-species" style="font-size:12px;font-weight:700;color:#B0A0A8;line-height:1.2;margin-top:1px"></div>
         <div id="si-rarity" style="margin:6px 0"></div>
         <div id="si-mood" style="font-size:14px;font-weight:700;color:#666;margin-bottom:4px"></div>
         <div id="si-trait" style="font-size:13px;font-weight:700;color:#AAA"></div>
@@ -3911,7 +3912,7 @@ function drawMiniMap(ctx,W,H){
   Object.keys(exploredCells).forEach(k=>{const[cx,cy]=k.split(',').map(Number);mc.beginPath();mc.arc((cx+0.5)*FOG_GRID*sx,(cy+0.5)*FOG_GRID*sy,FOG_GRID*sx*1.2,0,Math.PI*2);mc.fill();});
   mc.globalAlpha=1;
   // Zone markers — small emoji dots for explored zones
-  const ZONE_ICONS={meadow:'🌾',acorn:'🌰',crystal:'💎',rainbow:'🌈',mushroom:'🍄',picnic:'🧺',playground:'⛲',cave:'🕳',candy:'🍬'};
+  const ZONE_ICONS={meadow:'🌾',acorn:'🌰',crystal:'💎',rainbow:'🌈',mushroom:'🍄',picnic:'🧺',playground:'⛲',cave:'🦇',candy:'🍬'};
   mc.font='7px serif';mc.textAlign='center';mc.textBaseline='middle';
   ZONES.forEach(z=>{
     const zx=z.wx*mw, zy=z.wy*mh;
@@ -3923,10 +3924,33 @@ function drawMiniMap(ctx,W,H){
     }
   });
   mc.globalAlpha=1;
-  pods.forEach(pod=>{if(pod.collected||(pod.dormantUntil&&Date.now()<pod.dormantUntil))return;mc.fillStyle=pod.golden?'#ffd700':'rgba(255,255,255,0.6)';mc.beginPath();mc.arc(pod.wx*sx,pod.wy*sy,pod.golden?4:2.5,0,Math.PI*2);mc.fill();});
+  pods.forEach(pod=>{if(pod.collected||(pod.dormantUntil&&Date.now()<pod.dormantUntil))return;
+    const pulse=0.7+0.3*Math.sin(parkT*0.08+pod.wx*30); // gentle "come find me" pulse
+    const baseR=pod.golden?4:3;
+    // soft halo
+    mc.globalAlpha=0.25*pulse;mc.fillStyle=pod.golden?'#ffd700':'#ffffff';
+    mc.beginPath();mc.arc(pod.wx*sx,pod.wy*sy,baseR+2.5,0,Math.PI*2);mc.fill();
+    // core dot
+    mc.globalAlpha=1;mc.fillStyle=pod.golden?'#ffd700':'rgba(255,255,255,0.85)';
+    mc.beginPath();mc.arc(pod.wx*sx,pod.wy*sy,baseR,0,Math.PI*2);mc.fill();
+  });
+  mc.globalAlpha=1;
   mc.strokeStyle='rgba(255,255,255,0.45)';mc.lineWidth=1;mc.strokeRect(camX*sx,camY*sy,W*sx,H*sy);
   if(homeShown){mc.fillStyle='#ffd166';mc.font='8px serif';mc.textAlign='center';mc.textBaseline='middle';mc.fillText('🏡',HOME_WX*sx,HOME_WY*sy);}
-  mc.fillStyle='#ff8fab';mc.beginPath();mc.arc(sqX*sx,sqY*sy,4,0,Math.PI*2);mc.fill();
+  // Player marker — drawn LAST so it's always on top. A white ring around the
+  // pink dot makes "that's ME" instantly readable for young kids, and a small
+  // facing nub shows which way they're heading.
+  const pmx=sqX*sx, pmy=sqY*sy;
+  // facing nub (points the way the squirrel is moving / facing)
+  const movLen=Math.hypot(joyVX,joyVY);
+  let dirX=sqFace, dirY=0;
+  if(movLen>0.2){ dirX=joyVX/movLen; dirY=joyVY/movLen; }
+  mc.fillStyle='rgba(255,255,255,0.9)';
+  mc.beginPath();mc.arc(pmx+dirX*5, pmy+dirY*5, 1.8, 0, Math.PI*2);mc.fill();
+  // white outline ring
+  mc.beginPath();mc.arc(pmx,pmy,5,0,Math.PI*2);mc.fillStyle='rgba(255,255,255,0.95)';mc.fill();
+  // pink player dot on top
+  mc.fillStyle='#ff5b8a';mc.beginPath();mc.arc(pmx,pmy,3.4,0,Math.PI*2);mc.fill();
 }
 
 // Build a live-event boost map: family → multiplier (only 'live' events)
@@ -4622,7 +4646,7 @@ function _paintKitchen(ctx,W,H,t){
   const rackY=H*0.20, rackX=W*0.06, rackW=W*0.22;
   ctx.strokeStyle='#6d4818';ctx.lineWidth=3;
   ctx.beginPath();ctx.moveTo(rackX,rackY);ctx.lineTo(rackX+rackW,rackY);ctx.stroke();
-  ['🍳','🥄','🔪','🥢'].forEach((u,i)=>{
+  ['🍴','🥄','🔪','🥢'].forEach((u,i)=>{
     const ux=rackX+rackW*(0.15+i*0.24);
     ctx.strokeStyle='rgba(80,50,20,0.5)';ctx.lineWidth=1.5;
     ctx.beginPath();ctx.moveTo(ux,rackY);ctx.lineTo(ux,rackY+H*0.02);ctx.stroke();
@@ -4821,7 +4845,7 @@ const FURNITURE_CATALOGUE = [
   // ─── PREMIUM (paid) kitchen showstoppers ───
   {id:'candy_fountain', name:'Candy Fountain', icon:'🍬', cost:0, rarity:'premium', theme:'Kitchen', slot:'table_top', desc:'Squishies gather at the flowing candy fountain!', room:'kitchen', premium:true},
   {id:'magic_oven', name:'Magic Oven', icon:'🔮', cost:0, rarity:'premium', theme:'Kitchen', slot:'table_top', desc:'Watch treats magically bake inside!', room:'kitchen', premium:true},
-  {id:'cake_station', name:'Birthday Cake Station', icon:'🎂', cost:0, rarity:'premium', theme:'Kitchen', slot:'table_top', desc:'Squishies gather for a birthday party!', room:'kitchen', premium:true},
+  {id:'cake_station', name:'Birthday Cake Station', icon:'🎂', cost:0, rarity:'premium', theme:'Kitchen', slot:'table_top', desc:'Squishies try to blow out the candles!', room:'kitchen', premium:true},
 ];
 
 // ── HOME ROOM RENDERER ──
@@ -7100,6 +7124,13 @@ function _drawFurnitureInRoom(ctx,W,H,t){
       const topTierY=tiers[2].y-tiers[2].h;
       const candleCols=['#FF6B8A','#54C7EC','#FFD166'];
       const sparkCols=['#FFF7C0','#FFD166','#FFB347','#FF8FB0','#B6E0FF'];
+      // When a squishy puffs (_cakeFlickerTimer>0), the flames bend and dim as
+      // if blown — but never go out (magic relighting candles). flick<1 dips,
+      // and a sideways lean sells the "blown" look.
+      const blowing = _cakeFlickerTimer>0;
+      const flickAmt = blowing ? (0.45+0.35*Math.abs(Math.sin(t*0.9))) : 1; // dips while blown
+      const flickLean = blowing ? Math.sin(t*0.8)*cw*0.03 : 0; // sideways waver
+      if(_cakeFlickerTimer>0 && !_renderingGhost) _cakeFlickerTimer--;
       for(let c=0;c<3;c++){
         const cxp=cx+(c-1)*cw*0.11;
         const candleBaseY=topTierY;
@@ -7110,9 +7141,9 @@ function _drawFurnitureInRoom(ctx,W,H,t){
         ctx.fillStyle='rgba(255,255,255,0.75)';
         ctx.fillRect(cxp-cw*0.013, candleBaseY-candleH*0.7, cw*0.026, cw*0.006);
         ctx.fillRect(cxp-cw*0.013, candleBaseY-candleH*0.4, cw*0.026, cw*0.006);
-        const tipX=cxp, tipY=candleBaseY-candleH;
-        // glowing halo at the sparkler tip
-        const glowR=cw*(active?0.10:0.075)*(0.85+0.15*Math.sin(t*0.5+c));
+        const tipX=cxp+flickLean, tipY=candleBaseY-candleH;
+        // glowing halo at the sparkler tip (dims while being blown)
+        const glowR=cw*(active?0.10:0.075)*(0.85+0.15*Math.sin(t*0.5+c))*flickAmt;
         const halo=ctx.createRadialGradient(tipX,tipY,0.5,tipX,tipY,glowR);
         halo.addColorStop(0,'rgba(255,250,210,0.95)');
         halo.addColorStop(0.5,'rgba(255,200,90,0.5)');
@@ -7127,7 +7158,7 @@ function _drawFurnitureInRoom(ctx,W,H,t){
           const seed=c*7+s*13;
           const ang=(seed*2.39996)+Math.sin(t*0.08+seed)*0.5; // golden-angle spread
           const phase=((t*0.05)+(seed%10)/10)%1;
-          const len=cw*(active?0.16:0.12)*(0.3+phase*0.7);
+          const len=cw*(active?0.16:0.12)*(0.3+phase*0.7)*flickAmt;
           const sxp=tipX+Math.cos(ang)*len;
           const syp=tipY+Math.sin(ang)*len*0.9;
           const alpha=(1-phase)*(active?1:0.8);
@@ -7139,9 +7170,9 @@ function _drawFurnitureInRoom(ctx,W,H,t){
           ctx.beginPath();ctx.moveTo(sxp,syp);ctx.lineTo(tipX+Math.cos(ang)*len*0.6,tipY+Math.sin(ang)*len*0.55);ctx.stroke();
         }
         ctx.globalAlpha=1;
-        // bright white-hot core at the tip
+        // bright white-hot core at the tip (dims while being blown)
         ctx.fillStyle='#FFFFFF';
-        ctx.beginPath();ctx.arc(tipX,tipY,cw*0.018*(0.85+0.15*Math.sin(t*0.6+c)),0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(tipX,tipY,cw*0.018*(0.85+0.15*Math.sin(t*0.6+c))*flickAmt,0,Math.PI*2);ctx.fill();
       }
 
       // Confetti — a gentle few always falling, a full burst at PARTY time.
@@ -7439,15 +7470,16 @@ function _tickResAI(ai, id, W, H, t){
     const cake=_pf.find(p=>p.id==='cake_station');
     if(cake){
       const dx=ai.x-cake.x;
-      if(dx*dx < 0.025){
-        _cakeStationActiveNext=true; ai._baking=true;
-        // It's a party! Celebrate — party popper / star / heart mix.
-        if((ai.bubbleTimer||0) <= 0){
-          const roll=Math.random();
-          ai.bubble = roll<0.5?'party' : roll<0.8?'star' : 'heart';
-          ai.bubbleTimer=50;
+      if(dx*dx < 0.02){
+        // The squishy puffs at a candle — a 💨 wind bubble. The flame flickers
+        // from the puff but stays lit (it's a magic birthday candle!). One puff
+        // per visit, then they wander off none the wiser.
+        if(!ai._blewCandle){
+          ai._blewCandle=true;
+          ai.bubble='wind'; ai.bubbleTimer=55;
+          _cakeFlickerTimer=22; // brief flame flicker, handled by the renderer
         }
-      } else ai._baking=false;
+      }
     }
   } else if(ai.state===RES_STATES.EAT && ai.eatTargetId==='candy_fountain'){
     const _pf=Array.isArray(state.placedFurniture)?state.placedFurniture:[];
@@ -7489,7 +7521,8 @@ function _tickResAI(ai, id, W, H, t){
     ai._teaServed=false; // reset when they leave, so next visit pours again
     ai._toastReacted=false; // reset toaster reaction latch
     ai.fountainSlot=-1; // free up the candy fountain gather slot
-    ai.cakeSlot=-1; // free up the birthday cake gather slot
+    ai.cakeSlot=-1; // (legacy; cake is no longer slot-based)
+    ai._blewCandle=false; // reset cake candle-blow one-shot
     ai._ovenWowed=false; // reset magic oven first-wow reaction
   }
 
@@ -7645,22 +7678,15 @@ function _tickResAI(ai, id, W, H, t){
       }
     }
 
-    // ── Birthday Cake Station: SOCIAL GATHER. Up to THREE squishies party. ──
+    // ── Birthday Cake Station: one squishy at a time walks up and tries to
+    // blow out a candle, then wanders off. Not a gather — just a cute attempt. ──
     if(!chosen){
       const cakeSpot = eatSpots.find(s=>s.id==='cake_station');
       if(cakeSpot){
-        const taken=new Set();
-        Object.keys(_resAI).forEach(rid=>{
-          if(rid!==id && _resAI[rid].state===RES_STATES.EAT &&
-             _resAI[rid].eatTargetId==='cake_station' && _resAI[rid].cakeSlot>=0){
-            taken.add(_resAI[rid].cakeSlot);
-          }
-        });
-        if(taken.size<3){
-          if(_nearestResidentTo(cakeSpot.x, cakeSpot.y, 'cake_station')===id || taken.size>0){
-            for(let s=0;s<3;s++){ if(!taken.has(s)){ cakeSlot=s; break; } }
-            if(cakeSlot>=0){ chosen=cakeSpot; useCounter=true; }
-          }
+        const busy=Object.keys(_resAI).some(rid=>rid!==id &&
+          _resAI[rid].state===RES_STATES.EAT && _resAI[rid].eatTargetId==='cake_station');
+        if(!busy && _nearestResidentTo(cakeSpot.x, cakeSpot.y, 'cake_station')===id){
+          chosen=cakeSpot; useCounter=true;
         }
       }
     }
@@ -7709,14 +7735,12 @@ function _tickResAI(ai, id, W, H, t){
         ai.targetY=FLOOR_Y_MIN+0.05;
         ai.facing = ox<0 ? 1 : (ox>0 ? -1 : (Math.random()<0.5?1:-1)); // face the fountain
       } else if(chosen.id==='cake_station'){
-        // Birthday party: up to 3 squishies fan around the cake, facing inward.
-        ai.cakeSlot = cakeSlot;
+        // One squishy stands just in front of the cake, facing it, to blow.
         ai.hopReach=false; ai.onStool=false;
-        const offsets=[-0.13, 0.0, 0.13];
-        const ox=offsets[cakeSlot]||0;
-        ai.targetX=Math.max(X_MIN,Math.min(X_MAX,chosen.x + ox));
+        ai.targetX=Math.max(X_MIN,Math.min(X_MAX,chosen.x+(Math.random()<0.5?-0.04:0.04)));
         ai.targetY=FLOOR_Y_MIN+0.05;
-        ai.facing = ox<0 ? 1 : (ox>0 ? -1 : (Math.random()<0.5?1:-1));
+        ai.facing = (ai.targetX<chosen.x) ? 1 : -1; // face the cake
+        ai._blewCandle=false; // reset the one-shot puff for this visit
       } else if(useCounter){
         const stool=placed.find(p=>p.id==='step_stool');
         if(stool){
@@ -7863,6 +7887,8 @@ function _drawResidentBubble(ctx, ai, px, py, sqSize, t){
     const b=1+0.18*Math.abs(Math.sin(t*0.13)); ctx.save(); ctx.translate(bx+1,by-2); ctx.scale(b,b); ctx.fillText('🔮',0,0); ctx.restore();
   } else if(ai.bubble==='party'){     // birthday cake station
     const b=1+0.20*Math.abs(Math.sin(t*0.16)); ctx.save(); ctx.translate(bx+1,by-2); ctx.scale(b,b); ctx.fillText('🎉',0,0); ctx.restore();
+  } else if(ai.bubble==='wind'){      // blowing out a candle (cake station)
+    const b=1+0.16*Math.abs(Math.sin(t*0.2)); ctx.save(); ctx.translate(bx+1,by-2); ctx.scale(b,b); ctx.fillText('💨',0,0); ctx.restore();
   }
   ctx.restore();
 }
@@ -8443,6 +8469,7 @@ let _fruitBowlActive=false, _fruitBowlActiveNext=false;
 let _renderingGhost=false; // true only during the recursive ghost-preview render
 let _magicOvenActive=false, _magicOvenActiveNext=false;
 let _cakeStationActive=false, _cakeStationActiveNext=false;
+let _cakeFlickerTimer=0; // brief flame-flicker countdown when a squishy puffs
 // One-shot pour: when a squishy sits at tea, we trigger a brief pour toward its
 // side. _teaPourSide is -1 (left) or 1 (right); _teaPourTimer counts down frames.
 let _teaPourSide=0, _teaPourTimer=0;
@@ -10243,6 +10270,13 @@ function openSquishInfo(id){
   const m=document.getElementById('squish-info-modal');
   m.dataset.squishId=sq.id; // store id so actions don't depend on the display name
   document.getElementById('si-name').textContent=squishDisplayName(sq);
+  // Canonical species line — only shown when the squishy has a custom name, so
+  // the kid can still see what it actually is (the Pedia reference, in detail).
+  const speciesEl=document.getElementById('si-species');
+  if(speciesEl){
+    speciesEl.textContent = squishHasCustomName(sq) ? (sq.name + ' · ' + sq.family) : '';
+    speciesEl.style.display = squishHasCustomName(sq) ? '' : 'none';
+  }
   document.getElementById('si-rarity').textContent=rc.stars+' '+rc.label;
   document.getElementById('si-rarity').style.cssText=`background:${rc.color};color:${rc.text};display:inline-flex;align-items:center;gap:6px;padding:4px 14px;border-radius:20px;font-size:13px;font-weight:800;margin-bottom:16px`;
   document.getElementById('si-mood').textContent=moodEmoji+' '+sq.mood;
@@ -10370,9 +10404,16 @@ function nameFromInfo(){
   const id=m&&m.dataset?m.dataset.squishId:null;
   if(!id) return;
   openNameModal(id, ()=>{
-    // after naming, refresh the info modal's displayed name
+    // after naming, refresh the info modal's displayed name + species sub-line
     const sq=SQUISHIES.find(s=>s.id===id);
-    if(sq) document.getElementById('si-name').textContent=squishDisplayName(sq);
+    if(sq){
+      document.getElementById('si-name').textContent=squishDisplayName(sq);
+      const speciesEl=document.getElementById('si-species');
+      if(speciesEl){
+        speciesEl.textContent = squishHasCustomName(sq) ? (sq.name + ' · ' + sq.family) : '';
+        speciesEl.style.display = squishHasCustomName(sq) ? '' : 'none';
+      }
+    }
   });
 }
 
