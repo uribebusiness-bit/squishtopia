@@ -605,7 +605,34 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
     </div>
     <div style="display:flex;gap:10px">
       <button onclick="squishFromInfo()" style="flex:1;background:linear-gradient(135deg,#FF8FAB,#FF6B8A);color:white;border:none;padding:14px;border-radius:20px;font-size:15px;font-weight:800;cursor:pointer">Squish Again! 🤗</button>
+      <button onclick="nameFromInfo()" title="Name" style="background:#FFF3D9;color:#E8951F;border:none;padding:14px 16px;border-radius:20px;font-size:15px;font-weight:800;cursor:pointer">✏️</button>
       <button onclick="closeSquishInfo()" style="background:#F0F0F0;color:#888;border:none;padding:14px 20px;border-radius:20px;font-size:15px;font-weight:700;cursor:pointer">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- SQUISHY NAMING MODAL -->
+<div id="name-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:360;display:none;align-items:center;justify-content:center;padding:20px">
+  <div style="background:white;border-radius:24px;max-width:330px;width:100%;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+    <div style="background:linear-gradient(135deg,#FF8FAB,#FF6B8A);padding:18px 20px;text-align:center">
+      <canvas id="name-canvas" width="72" height="72" style="width:72px;height:72px"></canvas>
+      <div style="font-size:17px;font-weight:900;color:white;margin-top:2px">Name your squishy!</div>
+      <div id="name-species" style="font-size:11px;color:rgba(255,255,255,0.9);margin-top:2px"></div>
+    </div>
+    <div style="padding:18px">
+      <!-- Surprise + type -->
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+        <input id="name-input" type="text" maxlength="12" placeholder="Type a name…" autocomplete="off"
+          style="flex:1;border:2px solid #FFD6E0;border-radius:14px;padding:11px 12px;font-size:15px;font-weight:700;color:#2D1B00;outline:none"
+          oninput="_onNameInput()" />
+        <button onclick="_rollSurpriseName()" title="Surprise!" style="background:#FFF3D9;border:2px solid #FFE0A0;border-radius:14px;padding:9px 11px;font-size:18px;cursor:pointer">🎲</button>
+      </div>
+      <div id="name-error" style="color:#EF4444;font-size:11px;font-weight:700;min-height:15px;margin-bottom:6px"></div>
+      <!-- suggestion chips -->
+      <div style="font-size:11px;color:#AAA;font-weight:700;margin-bottom:6px">Or pick one:</div>
+      <div id="name-suggestions" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px"></div>
+      <button id="name-save-btn" onclick="_saveSquishName()" style="width:100%;background:linear-gradient(135deg,#FF8FAB,#FF6B8A);color:white;border:none;border-radius:16px;padding:13px;font-size:15px;font-weight:900;cursor:pointer">Name them! 💛</button>
+      <button onclick="_closeNameModal()" style="width:100%;background:none;border:none;color:#AAA;font-size:13px;font-weight:700;cursor:pointer;margin-top:8px;padding:6px">Maybe later</button>
     </div>
   </div>
 </div>
@@ -1076,7 +1103,7 @@ let state = {
   collected:[], counts:{}, totalSqueezes:0, streak:0, lastVisit:null,
   spotsVisited:new Set(), avatar:'🐿️', name:'Squish Explorer',
   badges:new Set(), friendCode:'SQSH-'+(7000+Math.floor(Math.random()*2999)), soundEnabled:true, musicEnabled:true, tradeEnabled:true, dailyLimitEnabled:false, playTimeToday:0, lastLimitDay:'', parentPin:'0000',
-  friendship:{}, lastDailyGift:null, dailyGiftDay:0,
+  friendship:{}, lastDailyGift:null, dailyGiftDay:0, squishNames:{},
   firstTime:true, xp:0, isPro:false, hasBonusPack:false, isPremium:false, starterPackClaimed:false,
   coins:0, ownedFurniture:['rug_basic','table_basic','lamp_basic'], placedFurniture:[
     {id:'rug_basic',   x:0.42, y:0.88},
@@ -1111,6 +1138,7 @@ try {
       state.collected      = arr(parsed.collected, []);
       state.counts         = obj(parsed.counts, {});
       state.friendship     = obj(parsed.friendship, {});
+      state.squishNames    = obj(parsed.squishNames, {});
       state.spotsVisited   = new Set(arr(parsed.spotsVisited, []));
       state.badges         = new Set(arr(parsed.badges, []));
       state.totalSqueezes  = num(parsed.totalSqueezes, 0);
@@ -1202,6 +1230,32 @@ try {
     }
   }
 } catch(e) { console.warn('Save load failed, starting fresh:', e && e.message); }
+
+// ─── SQUISHY NAMING ───
+// Cute, pre-vetted kid-friendly name pool for the Surprise button and
+// suggestions, so the no-typing path is always safe.
+const SQUISH_NAME_POOL=['Sparkle','Mochi','Pip','Waffle','Bubbles','Nugget','Pebble','Sprout','Cloud','Marshmallow','Biscuit','Twinkle','Sunny','Gummy','Pudding','Sprinkle','Cookie','Dot','Wiggles','Munch','Pickle','Noodle','Tofu','Jelly','Peanut','Honey','Berry','Maple','Cinnamon','Boba','Cupcake','Pumpkin','Buttons','Coco','Pip-Squeak'];
+// Conservative blocklist for the typed path (substring, case-insensitive).
+const NAME_BLOCKLIST=['fuck','shit','bitch','cunt','dick','cock','pussy','damn','sex','porn','nazi','rape','penis','vagina','slut','whore','boob','suck','hell','drug'];
+function squishDisplayName(sq){
+  if(!sq) return '';
+  const nm=(state.squishNames||{})[sq.id];
+  return (typeof nm==='string' && nm.trim()) ? nm.trim() : sq.name;
+}
+function squishHasCustomName(sq){
+  const nm=(state.squishNames||{})[sq && sq.id];
+  return !!(typeof nm==='string' && nm.trim());
+}
+function validateSquishName(raw){
+  let s=(raw||'').replace(/[^A-Za-z0-9 '\-]/g,'').replace(/\s+/g,' ').trim();
+  if(s.length<1) return {ok:false, reason:'Please enter a name.'};
+  if(s.length>12) s=s.slice(0,12).trim();
+  const low=s.toLowerCase();
+  if(NAME_BLOCKLIST.some(w=>low.includes(w))) return {ok:false, reason:'Please pick a different name.'};
+  return {ok:true, value:s};
+}
+function randomSquishName(){ return SQUISH_NAME_POOL[Math.floor(Math.random()*SQUISH_NAME_POOL.length)]; }
+
 function saveState(){
   try { localStorage.setItem('squishtopia_v3', JSON.stringify({...state, spotsVisited:[...state.spotsVisited], badges:[...state.badges]})); } catch(e){}
 }
@@ -9607,10 +9661,16 @@ function showDiscoveryCard(sq){
   pers.innerHTML=(sq.trait?`<div style="font-style:normal;font-weight:800;color:${accent};font-size:11px;letter-spacing:0.5px;margin-bottom:3px">${sq.trait}</div>`:'')+`"${sq.fact||''}"`;
   card.appendChild(pers);
 
+  // "Name them!" button — the peak-attachment naming invite (skippable).
+  const nameBtn=document.createElement('button');
+  nameBtn.style.cssText=`margin-top:14px;background:linear-gradient(135deg,#FF8FAB,#FF6B8A);color:white;border:none;border-radius:18px;padding:11px 22px;font-size:14px;font-weight:900;cursor:pointer;box-shadow:0 4px 14px ${accent}66`;
+  nameBtn.textContent='✏️ Name them!';
+  card.appendChild(nameBtn);
+
   // Tap hint
   const tap=document.createElement('div');
   tap.style.cssText='font-size:10px;color:#BBB;font-weight:700;margin-top:12px;letter-spacing:0.5px';
-  tap.textContent='tap to continue';
+  tap.textContent='tap anywhere to continue';
   card.appendChild(tap);
 
   overlay.appendChild(card);
@@ -9637,16 +9697,25 @@ function showDiscoveryCard(sq){
   })();
 
   let closed=false;
+  let autoTimer=null;
   const close=()=>{
     if(closed)return;closed=true;
+    if(autoTimer) clearTimeout(autoTimer);
     cancelAnimationFrame(raf);
     card.style.animation='discCardOut 0.35s ease forwards';
     overlay.style.transition='opacity 0.35s';overlay.style.opacity='0';
     setTimeout(()=>{ if(overlay.parentNode)overlay.parentNode.removeChild(overlay); },380);
   };
+  // Name button: stop auto-dismiss, close the card, open the naming modal.
+  nameBtn.addEventListener('click',(e)=>{
+    e.stopPropagation();
+    if(autoTimer) clearTimeout(autoTimer);
+    close();
+    setTimeout(()=>openNameModal(sq.id), 360);
+  });
   overlay.addEventListener('click',close);
   // Auto-dismiss after a beat so the flow continues even if untouched
-  setTimeout(close,3200);
+  autoTimer=setTimeout(close,4500);
 }
 
 function doCollect(){
@@ -9989,8 +10058,9 @@ function _buildShelfView(content){
       const dupeTag=dupes>0?'<div style="position:absolute;top:4px;right:4px;background:'+rc.color+';color:'+rc.text+';font-size:9px;font-weight:800;padding:2px 5px;border-radius:8px">×'+(dupes+1)+'</div>':'';
       // Compact card: art + name + rarity·friendship on one line
       html+='<div class="squishy-card rarity-'+sq.rarity+'" onclick="openSquishInfo(\''+sq.id+'\')" style="position:relative">'+
+        '<div onclick="event.stopPropagation();openNameModal(\''+sq.id+'\')" title="Name" style="position:absolute;top:4px;left:4px;background:rgba(255,255,255,0.92);border:1px solid #FFD6E0;border-radius:10px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,0.12)">✏️</div>'+
         '<canvas class="card-canvas" id="shelf-'+sq.id+'" width="60" height="60"></canvas>'+
-        '<div class="card-name">'+sq.name+'</div>'+
+        '<div class="card-name">'+squishDisplayName(sq)+'</div>'+
         '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:center">'+
           '<div class="card-rarity rarity-'+sq.rarity+'">'+rc.label+'</div>'+
           '<div style="font-size:9px;color:#FF8FAB;font-weight:700;white-space:nowrap">Lv'+fl+' 💛</div>'+
@@ -10071,6 +10141,8 @@ function _buildPedia(content){
             '<div style="font-size:15px;font-weight:900;color:#2D1B00">'+sq.name+'</div>'+
             '<div style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:10px;background:'+rc.color+';color:'+rc.text+'">'+rc.label+'</div>'+
           '</div>'+
+          // Personal nickname note (Pedia stays canonical; this just acknowledges the bond)
+          (squishHasCustomName(sq)?'<div style="font-size:10px;color:#FF8FAB;font-weight:800;margin-bottom:4px">💛 you call yours "'+squishDisplayName(sq)+'"</div>':'')+
           // Habitat hint
           (FAMILY_HOME_ZONE[sq.family]?'<div style="font-size:10px;color:#888;font-weight:700;margin-bottom:4px">'+ZONE_DISPLAY[FAMILY_HOME_ZONE[sq.family]]+'</div>':'')+
           '<div style="font-size:12px;color:#555;font-style:italic;line-height:1.5;margin-bottom:6px">'+(hasSecret?'<span style="color:#FF9F43;font-weight:800;font-style:normal">🔓 </span>'+secretFact:'"'+sq.fact+'"')+'</div>'+
@@ -10169,7 +10241,8 @@ function openSquishInfo(id){
   const hearts='♥'.repeat(friendLvl)+'♡'.repeat(10-friendLvl);
   const moodEmoji={Happy:'😊',Excited:'🤩',Content:'😌',Cozy:'🥰',Thoughtful:'🤔',Hyper:'😝',Bouncy:'🥳',Giddy:'😄',Playful:'🎉',Wondering:'🤨',Alert:'⚡',Theatrical:'🎭',Focused:'🧐',Steady:'😐',Sharp:'😎',Calculating:'🔢',Determined:'💪',Mysterious:'🌑',Graceful:'💃',Glowing:'✨',Dazzling:'💫',Serene:'🌙',Bubbly:'🫧',Peaceful:'☁️',Dreamy:'💭',Proud:'👑',Carefree:'🍃',Wistful:'🌧',Restless:'💨',Snuggly:'🤗',Stable:'🌱',Calm:'🍃',Eccentric:'🍄',Blooming:'🌸',Grounded:'🌿',Romantic:'🌹',Otherworldly:'🌌',Noble:'⭐',Incandescent:'🔥',Vast:'🌠',Cosmic:'🪐',Unknowable:'🖤'}[sq.mood]||'😊';
   const m=document.getElementById('squish-info-modal');
-  document.getElementById('si-name').textContent=sq.name;
+  m.dataset.squishId=sq.id; // store id so actions don't depend on the display name
+  document.getElementById('si-name').textContent=squishDisplayName(sq);
   document.getElementById('si-rarity').textContent=rc.stars+' '+rc.label;
   document.getElementById('si-rarity').style.cssText=`background:${rc.color};color:${rc.text};display:inline-flex;align-items:center;gap:6px;padding:4px 14px;border-radius:20px;font-size:13px;font-weight:800;margin-bottom:16px`;
   document.getElementById('si-mood').textContent=moodEmoji+' '+sq.mood;
@@ -10199,11 +10272,108 @@ function openSquishInfo(id){
   m.className='show';
 }
 function closeSquishInfo(){document.getElementById('squish-info-modal').className='';}
+
+// ─── SQUISHY NAMING MODAL ───
+let _namingSquishId=null;
+let _afterNameCb=null; // optional callback after naming (e.g. continue reveal flow)
+
+function openNameModal(squishId, afterCb){
+  const sq=SQUISHIES.find(s=>s.id===squishId);
+  if(!sq){ if(afterCb)afterCb(); return; }
+  _namingSquishId=squishId;
+  _afterNameCb=afterCb||null;
+  const modal=document.getElementById('name-modal');
+  document.getElementById('name-species').textContent='('+sq.name+')';
+  const input=document.getElementById('name-input');
+  input.value = squishHasCustomName(sq) ? squishDisplayName(sq) : '';
+  document.getElementById('name-error').textContent='';
+  // suggestion chips — 4 random pre-vetted names
+  const pool=[...SQUISH_NAME_POOL].sort(()=>Math.random()-0.5).slice(0,4);
+  document.getElementById('name-suggestions').innerHTML = pool.map(n=>
+    `<button onclick="_pickSuggestedName('${n}')" style="background:#FFF0F5;border:1.5px solid #FFD6E0;border-radius:20px;padding:7px 13px;font-size:13px;font-weight:800;color:#FF6B8A;cursor:pointer">${n}</button>`
+  ).join('');
+  // draw the squishy
+  const c=document.getElementById('name-canvas');
+  if(c){
+    const dpr=window.devicePixelRatio||1;
+    c.width=Math.round(72*dpr);c.height=Math.round(72*dpr);c.style.width='72px';c.style.height='72px';
+    const ctx=c.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,72,72);
+    if(typeof _safeDraw==='function') _safeDraw(ctx,sq,36,40,30,40);
+  }
+  modal.style.display='flex';
+  setTimeout(()=>{ try{ input.focus(); }catch(e){} }, 100);
+}
+function _closeNameModal(){
+  const modal=document.getElementById('name-modal');
+  if(modal) modal.style.display='none';
+  const cb=_afterNameCb; _afterNameCb=null; _namingSquishId=null;
+  if(cb) cb();
+}
+function _onNameInput(){ document.getElementById('name-error').textContent=''; }
+function _rollSurpriseName(){
+  document.getElementById('name-input').value=randomSquishName();
+  document.getElementById('name-error').textContent='';
+}
+function _pickSuggestedName(n){
+  document.getElementById('name-input').value=n;
+  document.getElementById('name-error').textContent='';
+  _saveSquishName();
+}
+function _saveSquishName(){
+  if(!_namingSquishId) return;
+  const raw=document.getElementById('name-input').value;
+  const res=validateSquishName(raw);
+  if(!res.ok){ document.getElementById('name-error').textContent=res.reason; return; }
+  if(!state.squishNames) state.squishNames={};
+  state.squishNames[_namingSquishId]=res.value;
+  saveState();
+  const sq=SQUISHIES.find(s=>s.id===_namingSquishId);
+  const nm=res.value;
+  // Squishy reacts happily to its new name (the bond beat).
+  const modal=document.getElementById('name-modal');
+  if(modal) modal.style.display='none';
+  if(typeof showToast==='function') showToast('💛 '+nm+' loves their name!');
+  // refresh any open views that show names
+  const content=document.getElementById('home-tab-content');
+  try{
+    const shelfScreen=document.getElementById('screen-shelf');
+    if(shelfScreen&&shelfScreen.classList.contains('active')){
+      const sc=document.getElementById('shelf-content')||document.querySelector('#screen-shelf .tab-content');
+    }
+  }catch(e){}
+  if(typeof _refreshShelfIfOpen==='function') _refreshShelfIfOpen();
+  const cb=_afterNameCb; _afterNameCb=null; _namingSquishId=null;
+  if(cb) cb();
+}
+// Rebuild the shelf if it's the active screen, so a new name shows immediately.
+function _refreshShelfIfOpen(){
+  try{
+    const sh=document.getElementById('screen-shelf');
+    if(sh && sh.classList.contains('active')){
+      const content=sh.querySelector('.shelf-content, #shelf-tab-content, .tab-content') || document.getElementById('shelf-content');
+      if(content && _shelfTab==='shelf') _buildShelfView(content);
+      else if(content) _buildShelfView(content);
+    }
+  }catch(e){}
+}
 function squishFromInfo(){
-  const id=document.getElementById('si-name').textContent;
-  const sq=SQUISHIES.find(s=>s.name===id);
+  const m=document.getElementById('squish-info-modal');
+  const id=m&&m.dataset?m.dataset.squishId:null;
+  const sq=SQUISHIES.find(s=>s.id===id);
   closeSquishInfo();
   if(sq) openSquishPlay(sq,'shelf');
+}
+// Open the naming modal for the squishy currently shown in the info modal.
+function nameFromInfo(){
+  const m=document.getElementById('squish-info-modal');
+  const id=m&&m.dataset?m.dataset.squishId:null;
+  if(!id) return;
+  openNameModal(id, ()=>{
+    // after naming, refresh the info modal's displayed name
+    const sq=SQUISHIES.find(s=>s.id===id);
+    if(sq) document.getElementById('si-name').textContent=squishDisplayName(sq);
+  });
 }
 
 
