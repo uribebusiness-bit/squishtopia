@@ -2965,6 +2965,9 @@ let _sprintKey=false,_sprintBtn=false;
 function _updateSprint(){ joySprinting = _sprintKey || _sprintBtn; }
 const sqBaseSpeed=4.2,sqSprintSpeed=4.2;
 let pods=[],parkT=0;
+// Sparkle offsets (as fractions of pulseR) reused each frame — avoids allocating
+// a new array per pod per frame in the draw loop.
+const _POD_SPARKLE_OFF=[[-1.3,-0.6],[1.2,-0.5],[0,-1.3]];
 let exploredCells={},exploredPct=0;
 let _lastExploreQuestBracket=0; // tracks 5% brackets for the explore quest
 let podOpenCooldown=0,_collectingPod=null;
@@ -4278,11 +4281,24 @@ function drawPods(ctx,W,H){
     }
     const fill=ctx.createRadialGradient(px-pulseR*.3,py-pulseR*.3,pulseR*.05,px,py,pulseR);fill.addColorStop(0,'rgba(255,255,255,.9)');fill.addColorStop(0.4,_ha(pod.sq.colors[0],0.87));fill.addColorStop(1,_ha(pod.sq.colors[1],0.8));ctx.fillStyle=fill;ctx.beginPath();ctx.arc(px,py,pulseR,0,Math.PI*2);ctx.fill();
     ctx.strokeStyle=pod.golden?'#ffd700':pod.sq.colors[2];ctx.lineWidth=2.5;ctx.globalAlpha=fa*(0.7+pod.glow*.3);ctx.beginPath();ctx.arc(px,py,pulseR,0,Math.PI*2);ctx.stroke();
-    const sh=ctx.createRadialGradient(px-pulseR*.3,py-pulseR*.35,0,px-pulseR*.2,py-pulseR*.2,pulseR*.55);sh.addColorStop(0,'rgba(255,255,255,.85)');sh.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=sh;ctx.globalAlpha=fa*.5;ctx.beginPath();ctx.arc(px,py,pulseR,0,Math.PI*2);ctx.fill();ctx.restore();
+    // Shine highlight: a cheap translucent white ellipse (upper-left) instead of
+    // creating a radial gradient every frame for every pod.
+    ctx.globalAlpha=fa*.4;ctx.fillStyle='rgba(255,255,255,0.9)';
+    ctx.beginPath();ctx.ellipse(px-pulseR*.28,py-pulseR*.3,pulseR*.34,pulseR*.24,-0.5,0,Math.PI*2);ctx.fill();ctx.restore();
     ctx.save();ctx.globalAlpha=fa;_drawSquishySprite(ctx,pod.sq,px,py,pulseR*0.56,parkT);ctx.restore();
     if(pod.golden){ctx.save();ctx.globalAlpha=fa;ctx.font='bold 11px Nunito,sans-serif';ctx.textAlign='center';ctx.fillStyle='#ffd700';ctx.strokeStyle='#8b6200';ctx.lineWidth=3;ctx.strokeText('✦ GOLDEN ✦',px,py+pulseR+14);ctx.fillText('✦ GOLDEN ✦',px,py+pulseR+14);ctx.restore();}
     if(dist<pulseR*2.2){const es=1+0.3*Math.sin(parkT*0.22);ctx.save();ctx.globalAlpha=fa;ctx.font='bold '+(20*es)+'px Nunito,sans-serif';ctx.strokeStyle=pod.sq.colors[2];ctx.lineWidth=4;ctx.textAlign='center';ctx.textBaseline='middle';ctx.strokeText('!',px,py-pulseR-22);ctx.fillStyle='white';ctx.fillText('!',px,py-pulseR-22);ctx.restore();}
-    [[px-pulseR*1.3,py-pulseR*.6],[px+pulseR*1.2,py-pulseR*.5],[px,py-pulseR*1.3]].forEach((pp,k)=>{ctx.save();ctx.globalAlpha=fa*.65*Math.abs(Math.sin(parkT*.07+k*1.8));ctx.fillStyle='#ffe066';ctx.font=(9+2*Math.sin(parkT*.06+k))+'px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('✦',pp[0],pp[1]);ctx.restore();});
+    // Sparkles: reuse a module-level offset table (no per-frame array alloc),
+    // set font/state once, and skip per-sparkle save/restore. Cheaper GC + fewer
+    // state changes than the old per-sparkle save/restore + new array each frame.
+    ctx.save();ctx.fillStyle='#ffe066';ctx.textAlign='center';ctx.textBaseline='middle';
+    for(let k=0;k<_POD_SPARKLE_OFF.length;k++){
+      const o=_POD_SPARKLE_OFF[k];
+      ctx.globalAlpha=fa*.65*Math.abs(Math.sin(parkT*.07+k*1.8));
+      ctx.font=(9+2*Math.sin(parkT*.06+k))+'px serif';
+      ctx.fillText('✦', px+pulseR*o[0], py+pulseR*o[1]);
+    }
+    ctx.restore();
     ctx.globalAlpha=1;ctx.shadowBlur=0;ctx.shadowColor='transparent';
   });
 }
@@ -9524,8 +9540,12 @@ function initPark(){
 }
 
 function parkLoop(){
+  const sp=document.getElementById('screen-park');
+  // If we've left the park, actually STOP the loop (don't keep scheduling a
+  // do-nothing frame forever). initPark() restarts it cleanly on return via the
+  // parkLooping guard.
+  if(!sp||!sp.classList.contains('active')){ parkLooping=false; return; }
   requestAnimationFrame(parkLoop);
-  const sp=document.getElementById('screen-park');if(!sp||!sp.classList.contains('active'))return;
   const ov=document.getElementById('park-ov');if(!ov||ov.width<10)return;
   const dpr=window.devicePixelRatio||1,ctx=ov.getContext('2d');
   // Check daily limit once every ~60 frames (~1 sec)
