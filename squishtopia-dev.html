@@ -392,6 +392,7 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
   <button class="welcome-btn" onclick="startGame()">Let's Go! ✨</button>
   <!-- ▼▼▼ DEV ONLY — REMOVE BEFORE LAUNCH ▼▼▼ -->
   <button onclick="devJumpToTreehouse()" style="margin-top:14px;background:#E53935;color:white;border:2px dashed #fff;padding:10px 28px;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;letter-spacing:0.5px;box-shadow:0 4px 14px rgba(229,57,53,0.4)">🛠 DEV: Jump to Treehouse</button>
+  <button onclick="devTestOutfits()" style="margin-top:10px;background:#7B61FF;color:white;border:2px dashed #fff;padding:10px 28px;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;letter-spacing:0.5px;box-shadow:0 4px 14px rgba(123,97,255,0.4)">🎩 DEV: Test Outfits</button>
   <!-- ▲▲▲ DEV ONLY — REMOVE BEFORE LAUNCH ▲▲▲ -->
 </div>
 
@@ -456,8 +457,9 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
     <!-- View tabs + Home shortcut -->
     <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
       <div style="display:flex;flex:1;gap:0;background:#F5F5F5;border-radius:12px;padding:3px">
-        <button id="shelf-tab-shelf" onclick="switchShelfTab('shelf')" style="flex:1;border:none;border-radius:9px;padding:7px 0;font-size:12px;font-weight:800;cursor:pointer;background:white;color:#FF8FAB;box-shadow:0 1px 4px rgba(0,0,0,0.1);transition:all 0.2s">🧸 Shelf</button>
-        <button id="shelf-tab-pedia" onclick="switchShelfTab('pedia')" style="flex:1;border:none;border-radius:9px;padding:7px 0;font-size:12px;font-weight:800;cursor:pointer;background:transparent;color:#AAA;transition:all 0.2s">📖 Squishypedia</button>
+        <button id="shelf-tab-shelf" onclick="switchShelfTab('shelf')" style="flex:1;border:none;border-radius:9px;padding:7px 0;font-size:11px;font-weight:800;cursor:pointer;background:white;color:#FF8FAB;box-shadow:0 1px 4px rgba(0,0,0,0.1);transition:all 0.2s">🧸 Shelf</button>
+        <button id="shelf-tab-pedia" onclick="switchShelfTab('pedia')" style="flex:1;border:none;border-radius:9px;padding:7px 0;font-size:11px;font-weight:800;cursor:pointer;background:transparent;color:#AAA;transition:all 0.2s">📖 Pedia</button>
+        <button id="shelf-tab-closet" onclick="switchShelfTab('closet')" style="flex:1;border:none;border-radius:9px;padding:7px 0;font-size:11px;font-weight:800;cursor:pointer;background:transparent;color:#AAA;transition:all 0.2s">👕 Closet</button>
       </div>
       <button onclick="goHome()" style="background:#FFF0F6;border:1.5px solid #FFB3C6;border-radius:12px;padding:7px 11px;font-size:18px;cursor:pointer;line-height:1;flex-shrink:0" title="Go to your home room">🏡</button>
     </div>
@@ -611,13 +613,33 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
     <div style="display:flex;gap:10px">
       <button onclick="squishFromInfo()" style="flex:1;background:linear-gradient(135deg,#FF8FAB,#FF6B8A);color:white;border:none;padding:14px;border-radius:20px;font-size:15px;font-weight:800;cursor:pointer">Squish Again! 🤗</button>
       <button onclick="nameFromInfo()" title="Name" style="background:#FFF3D9;color:#E8951F;border:none;padding:14px 16px;border-radius:20px;font-size:15px;font-weight:800;cursor:pointer">✏️</button>
+      <button onclick="dressUpFromInfo()" title="Dress Up" style="background:#F0E8FF;color:#8B5CF6;border:none;padding:14px 16px;border-radius:20px;font-size:15px;font-weight:800;cursor:pointer">👕</button>
       <button onclick="closeSquishInfo()" style="background:#F0F0F0;color:#888;border:none;padding:14px 20px;border-radius:20px;font-size:15px;font-weight:700;cursor:pointer">Close</button>
     </div>
   </div>
 </div>
 
-<!-- SQUISHY NAMING MODAL -->
-<div id="name-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:360;display:none;align-items:center;justify-content:center;padding:20px">
+<!-- CLOSET / DRESS-UP MODAL -->
+<div id="closet-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:360;display:none;align-items:center;justify-content:center;padding:20px">
+  <div style="background:white;border-radius:24px;max-width:340px;width:100%;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+    <div style="background:linear-gradient(135deg,#A78BFA,#8B5CF6);padding:16px 20px;text-align:center;position:relative">
+      <canvas id="closet-canvas" width="96" height="96" style="width:96px;height:96px"></canvas>
+      <div id="closet-sq-name" style="font-size:16px;font-weight:900;color:white;margin-top:2px"></div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.85);margin-top:1px">Tap an item to wear it!</div>
+    </div>
+    <div style="padding:14px 16px;max-height:46vh;overflow-y:auto">
+      <div style="font-size:12px;font-weight:800;color:#8B5CF6;margin-bottom:8px">🎩 Hats</div>
+      <div id="closet-hats-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px"></div>
+      <div style="font-size:12px;font-weight:800;color:#8B5CF6;margin:14px 0 8px">🎈 Held Items</div>
+      <div id="closet-held-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px"></div>
+    </div>
+    <div style="padding:0 16px 16px">
+      <button onclick="_closeCloset()" style="width:100%;background:#F0F0F0;color:#888;border:none;border-radius:16px;padding:13px;font-size:14px;font-weight:700;cursor:pointer">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- SQUISHY NAMING MODAL --><div id="name-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:360;display:none;align-items:center;justify-content:center;padding:20px">
   <div style="background:white;border-radius:24px;max-width:330px;width:100%;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
     <div style="background:linear-gradient(135deg,#FF8FAB,#FF6B8A);padding:18px 20px;text-align:center">
       <canvas id="name-canvas" width="72" height="72" style="width:72px;height:72px"></canvas>
@@ -1132,6 +1154,7 @@ let state = {
   badges:new Set(), friendCode:'SQSH-'+(7000+Math.floor(Math.random()*2999)), soundEnabled:true, musicEnabled:true, tradeEnabled:true, dailyLimitEnabled:false, playTimeToday:0, lastLimitDay:'', parentPin:'0000',
   friendship:{}, lastDailyGift:null, dailyGiftDay:0, squishNames:{},
   quests:{daily:[], weekly:[], dailyDate:'', weeklyDate:''},
+  equippedOutfits:{},
   firstTime:true, xp:0, isPro:false, hasBonusPack:false, isPremium:false, starterPackClaimed:false, premiumPackClaimed:false,
   coins:0, ownedFurniture:['rug_basic','table_basic','lamp_basic'], placedFurniture:[
     {id:'rug_basic',   x:0.42, y:0.88},
@@ -1168,6 +1191,7 @@ try {
       state.friendship     = obj(parsed.friendship, {});
       state.squishNames    = obj(parsed.squishNames, {});
       state.quests         = obj(parsed.quests, {daily:[], weekly:[], dailyDate:'', weeklyDate:''});
+      state.equippedOutfits= obj(parsed.equippedOutfits, {});
       state.spotsVisited   = new Set(arr(parsed.spotsVisited, []));
       state.badges         = new Set(arr(parsed.badges, []));
       state.totalSqueezes  = num(parsed.totalSqueezes, 0);
@@ -1424,7 +1448,11 @@ function _getSquishySprite(sq, r){
   // Quantize radius to 2px buckets so the slight per-frame pod pulse doesn't
   // spawn a new sprite every frame — keeps cache hits high and memory bounded.
   const rr = Math.max(2, Math.round(r/2)*2);
-  const key = sq.id + '@' + rr + '@' + dpr;
+  // Include equipped outfit in the key so changing a squishy's outfit produces a
+  // fresh sprite (the outfit is baked into the cached body image).
+  const eq = (state.equippedOutfits||{})[sq.id];
+  const eqKey = eq && eq.hat ? eq.hat : '_';
+  const key = sq.id + '@' + rr + '@' + dpr + '@' + eqKey;
   let spr = _spriteCache[key];
   if(spr) return spr;
   const dim = Math.ceil(rr * _SPRITE_PAD * 2);
@@ -1461,8 +1489,8 @@ function _drawSquishySprite(ctx, sq, x, y, r, bounce){
   ctx.drawImage(spr.canvas, x - half, y - half, spr.dim, spr.dim);
 }
 
-function _safeDraw(ctx, sq, x, y, r, bounce){
-  _guardedDraw(ctx, function(){ drawSquishy(ctx, sq, x, y, r, bounce); });
+function _safeDraw(ctx, sq, x, y, r, bounce, noOutfit){
+  _guardedDraw(ctx, function(){ drawSquishy(ctx, sq, x, y, r, bounce, false, noOutfit); });
 }
 
 // ── RARITY "WOW" AURA ─────────────────────────────────────────────
@@ -1542,7 +1570,7 @@ function _rarityFX(ctx, r, rarity, accent, t){
   ctx.restore();
 }
 
-function drawSquishy(ctx, sq, x, y, r, bounce=0, skipAura=false) {
+function drawSquishy(ctx, sq, x, y, r, bounce=0, skipAura=false, noOutfit=false) {
   const c=sq.colors, id=sq.id, fam=sq.family;
   ctx.save();
   ctx.translate(x,y);
@@ -2840,12 +2868,826 @@ function drawSquishy(ctx, sq, x, y, r, bounce=0, skipAura=false) {
     }
   }
 
+  // ── OUTFIT LAYER (closet feature) — drawn on top of the body, still inside
+  // the squishy's translated context so it scales/positions with the squishy. ──
+  if(!noOutfit && typeof _drawOutfits==='function') _drawOutfits(ctx, sq, r, t);
+
   ctx.globalAlpha=1;
   ctx.restore();
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// ===== CLOSET / OUTFITS (premium feature) =====
+// Each outfit is a modular item drawn relative to the squishy's anchor points
+// and scaled by its radius, so ONE definition works across all 42 differently-
+// shaped squishies. Ownership is per-item so we can launch with "$1.99 unlocks
+// all current outfits" and later split future outfits into honest, clearly-
+// priced packs WITHOUT restructuring. No premium currency — ever.
+// ═══════════════════════════════════════════════════════════════════
 
-// ===== BAO-BAO WELCOME ANIMATION =====
+// Per-family head-top anchor (as a fraction of r). Different body shapes top out
+// at slightly different heights; this table lets one hat sit correctly on each.
+// Tuned by eye against real squishies — adjust per family as needed.
+const _OUTFIT_HEAD_TOP = {
+  'Doughy Pals':   -0.92,
+  'Squeezy Neons': -0.95,
+  'Cubelets':      -0.85,
+  'Jelly Jems':    -0.98,
+  'Puff Pals':     -0.80,
+  'Garden Gooies': -1.00,
+  'Gloomies':      -0.90,
+};
+function _headTopY(sq, r){
+  const f = _OUTFIT_HEAD_TOP[sq.family] != null ? _OUTFIT_HEAD_TOP[sq.family] : -0.9;
+  return r * f;
+}
+
+// ── Outfit catalogue. `draw(ctx,sq,r,t,cx,topY)` renders the item anchored to
+// the head. Categories keep slots from cluttering (one hat + one held at most). ──
+const OUTFIT_CATALOGUE = [
+  // ---- HATS ----  (free:true = the taste; rest unlock with premium)
+  {id:'party_hat', name:'Party Hat',   cat:'hat', icon:'🎉', free:true,  draw:_drawPartyHat},
+  {id:'crown',     name:'Royal Crown', cat:'hat', icon:'👑', premium:true, draw:_drawCrown},
+  {id:'flower',    name:'Flower Crown',cat:'hat', icon:'🌸', premium:true, draw:_drawFlowerCrown},
+  {id:'bow',       name:'Bow',         cat:'hat', icon:'🎀', premium:true, draw:_drawBow},
+  {id:'beanie',    name:'Beanie',      cat:'hat', icon:'🧢', premium:true, draw:_drawBeanie},
+  {id:'wizard',    name:'Wizard Hat',  cat:'hat', icon:'🧙', premium:true, draw:_drawWizardHat},
+  {id:'cap',       name:'Cap',         cat:'hat', icon:'🧢', premium:true, draw:_drawCap},
+  {id:'chef',      name:'Chef Hat',    cat:'hat', icon:'👨‍🍳', premium:true, draw:_drawChefHat},
+  {id:'tophat',    name:'Top Hat',     cat:'hat', icon:'🎩', premium:true, draw:_drawTopHat},
+  {id:'catears',   name:'Cat Ears',    cat:'hat', icon:'🐱', premium:true, draw:_drawCatEars},
+  // ---- HELD ITEMS ----
+  {id:'balloon',   name:'Balloon',     cat:'held', icon:'🎈', premium:true, draw:_drawBalloon, iconDraw:_iconBalloon},
+  {id:'flower_held', name:'Flower',    cat:'held', icon:'🌷', premium:true, draw:_drawFlower, iconDraw:_iconFlower},
+  {id:'wand',      name:'Star Wand',   cat:'held', icon:'⭐', premium:true, draw:_drawStarWand, iconDraw:_iconStarWand},
+  {id:'icecream',  name:'Ice Cream',   cat:'held', icon:'🍦', premium:true, draw:_drawIceCream, iconDraw:_iconIceCream},
+  {id:'lollipop',  name:'Lollipop',    cat:'held', icon:'🍭', premium:true, draw:_drawLollipop, iconDraw:_iconLollipop},
+  {id:'teddy',     name:'Teddy',       cat:'held', icon:'🧸', premium:true, draw:_drawTeddy, iconDraw:_iconTeddy},
+  {id:'book',      name:'Book',        cat:'held', icon:'📖', premium:true, draw:_drawBook, iconDraw:_iconBook},
+];
+
+// Is an outfit available to equip? Free outfits always; premium ones need the
+// premium unlock. (isPremium is the dev stub for now, so everything's open.)
+function _outfitUnlocked(item){
+  if(!item) return false;
+  if(item.free) return true;
+  if(item.premium) return !!state.isPremium;
+  return true;
+}
+
+// Draw whatever this squishy currently has equipped.
+function _drawOutfits(ctx, sq, r, t){
+  const eq = (state.equippedOutfits||{})[sq.id];
+  if(!eq) return;
+  const topY = _headTopY(sq, r);
+  // Held-item slot (drawn first so a hat layers cleanly over any overlap).
+  // Held items anchor to the side/front base of the squishy — these characters
+  // are limbless blobs/clouds/gems, so "holding" reads best as an accessory
+  // tucked beside or floating just in front of them.
+  if(eq.held){
+    const item = OUTFIT_CATALOGUE.find(o=>o.id===eq.held);
+    if(item && item.draw) { try { item.draw(ctx, sq, r, t, 0, topY); } catch(e){} }
+  }
+  // Hat slot
+  if(eq.hat){
+    const item = OUTFIT_CATALOGUE.find(o=>o.id===eq.hat);
+    if(item && item.draw) { try { item.draw(ctx, sq, r, t, 0, topY); } catch(e){} }
+  }
+}
+
+// ── Individual outfit renderers (anchored at cx=0, topY = head top) ──
+function _drawPartyHat(ctx, sq, r, t, cx, topY){
+  ctx.save();
+  // A playful little tilt gives it character (vs. a stiff upright cone).
+  ctx.translate(cx, topY);
+  ctx.rotate(-0.12);
+  const w = r*0.52, h = r*0.78;
+  const tipY = -h, baseY = 0;
+  // ── Cone body: bright candy gradient (top lighter → base saturated) ──
+  const g = ctx.createLinearGradient(0, tipY, 0, baseY);
+  g.addColorStop(0, '#FFE08A');
+  g.addColorStop(0.5, '#FF8FB0');
+  g.addColorStop(1, '#C86BE0');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(-w*0.5, baseY);
+  ctx.lineTo(0, tipY);
+  ctx.lineTo(w*0.5, baseY);
+  ctx.closePath(); ctx.fill();
+  // ── Cheerful polka dots (not traffic-cone stripes) ──
+  ctx.fillStyle='rgba(255,255,255,0.9)';
+  const dots=[[-w*0.12, -h*0.25, r*0.06],[w*0.1, -h*0.45, r*0.05],[-w*0.05, -h*0.62, r*0.04],[w*0.05, -h*0.08, r*0.055]];
+  dots.forEach(([dx,dy,ds])=>{ ctx.beginPath(); ctx.arc(dx,dy,ds,0,Math.PI*2); ctx.fill(); });
+  // ── Scalloped wavy brim along the bottom (soft, cute — not a hard edge) ──
+  ctx.fillStyle='#FFFFFF';
+  const scallops=5, sw=w*1.0;
+  ctx.beginPath();
+  ctx.moveTo(-sw*0.5, baseY);
+  for(let i=0;i<scallops;i++){
+    const x0=-sw*0.5 + (i/scallops)*sw;
+    const x1=-sw*0.5 + ((i+1)/scallops)*sw;
+    ctx.quadraticCurveTo((x0+x1)/2, baseY+r*0.14, x1, baseY);
+  }
+  ctx.lineTo(sw*0.5, baseY-r*0.04);
+  ctx.lineTo(-sw*0.5, baseY-r*0.04);
+  ctx.closePath(); ctx.fill();
+  // ── Fluffy pom-pom on top (the star of the cuteness) ──
+  const pomY=tipY;
+  ctx.fillStyle='#FFF6FB';
+  // fuzzy look: a cluster of little circles
+  const puffs=[[0,0,r*0.15],[-r*0.1,-r*0.04,r*0.1],[r*0.1,-r*0.03,r*0.1],[0,-r*0.12,r*0.1],[-r*0.06,r*0.06,r*0.08],[r*0.06,r*0.06,r*0.08]];
+  puffs.forEach(([px,py,ps])=>{ ctx.beginPath(); ctx.arc(px, pomY+py, ps, 0, Math.PI*2); ctx.fill(); });
+  // tiny blush/pink tint on the pom for warmth
+  ctx.fillStyle='rgba(255,180,210,0.5)';
+  ctx.beginPath(); ctx.arc(0, pomY, r*0.07, 0, Math.PI*2); ctx.fill();
+  // ── Sparkle for the "ooh" ──
+  ctx.fillStyle='rgba(255,255,255,0.95)';
+  const spX=w*0.3, spY=-h*0.5, ss=r*0.09;
+  ctx.beginPath();
+  ctx.moveTo(spX, spY-ss); ctx.lineTo(spX+ss*0.3, spY); ctx.lineTo(spX, spY+ss);
+  ctx.lineTo(spX-ss*0.3, spY); ctx.closePath(); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(spX-ss, spY); ctx.lineTo(spX, spY-ss*0.3); ctx.lineTo(spX+ss, spY);
+  ctx.lineTo(spX, spY+ss*0.3); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+function _drawCrown(ctx, sq, r, t, cx, topY){
+  ctx.save();
+  const w = r*0.66, h = r*0.46;
+  const baseY = topY + r*0.04;
+  // ── Soft rounded band base ──
+  const bg = ctx.createLinearGradient(cx, baseY-h*0.3, cx, baseY+r*0.06);
+  bg.addColorStop(0,'#FFE9A0'); bg.addColorStop(1,'#FFC23D');
+  ctx.fillStyle=bg;
+  ctx.beginPath();
+  ctx.roundRect(cx-w, baseY-r*0.04, w*2, r*0.16, r*0.06);
+  ctx.fill();
+  // ── Three rounded points (not sharp zigzag) with a gold gradient ──
+  const g = ctx.createLinearGradient(cx, baseY-h, cx, baseY);
+  g.addColorStop(0,'#FFF3C4'); g.addColorStop(0.5,'#FFD45E'); g.addColorStop(1,'#FFB300');
+  ctx.fillStyle=g;
+  const pts=[[-w*0.62, h*0.78],[0, h],[w*0.62, h*0.78]]; // [x, height] of each point
+  ctx.beginPath();
+  ctx.moveTo(cx-w, baseY);
+  pts.forEach((p,i)=>{
+    const px=cx+p[0], py=baseY-p[1];
+    const prevX = i===0 ? cx-w : cx+pts[i-1][0];
+    const valleyX=(prevX+px)/2;
+    ctx.quadraticCurveTo(valleyX, baseY-h*0.1, px, py); // dip then up to rounded point
+  });
+  ctx.quadraticCurveTo((cx+w*0.62+cx+w)/2, baseY-h*0.1, cx+w, baseY);
+  ctx.closePath(); ctx.fill();
+  // ── Pearl tips on each point (the cute detail) ──
+  pts.forEach(p=>{
+    const px=cx+p[0], py=baseY-p[1]-r*0.01;
+    ctx.fillStyle='#FFFFFF';
+    ctx.beginPath(); ctx.arc(px, py, r*0.075, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle='rgba(255,200,230,0.6)'; // pink pearl blush
+    ctx.beginPath(); ctx.arc(px-r*0.02, py-r*0.02, r*0.03, 0, Math.PI*2); ctx.fill();
+  });
+  // ── Glossy heart-ish jewels on the band ──
+  const jc=['#FF5D8F','#5DC8FF','#7CFF8F'];
+  for(let i=-1;i<=1;i++){
+    const jx=cx+i*w*0.52, jy=baseY+r*0.03;
+    ctx.fillStyle=jc[i+1];
+    ctx.beginPath(); ctx.arc(jx, jy, r*0.06, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.7)'; // gloss highlight
+    ctx.beginPath(); ctx.arc(jx-r*0.02, jy-r*0.02, r*0.022, 0, Math.PI*2); ctx.fill();
+  }
+  // ── Sparkle ──
+  ctx.fillStyle='rgba(255,255,255,0.95)';
+  const spX=cx+w*0.45, spY=baseY-h*0.7, ss=r*0.08;
+  ctx.beginPath();
+  ctx.moveTo(spX,spY-ss); ctx.lineTo(spX+ss*0.3,spY); ctx.lineTo(spX,spY+ss); ctx.lineTo(spX-ss*0.3,spY); ctx.closePath(); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(spX-ss,spY); ctx.lineTo(spX,spY-ss*0.3); ctx.lineTo(spX+ss,spY); ctx.lineTo(spX,spY+ss*0.3); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+function _drawFlowerCrown(ctx, sq, r, t, cx, topY){
+  const w = r*0.85;
+  ctx.save();
+  // ── Little green leaves tucked between flowers first (behind) ──
+  ctx.fillStyle='#8FD98A';
+  for(let i=-2;i<=2;i++){
+    const fx = cx + (i+0.5)*w*0.32;
+    const fy = topY + Math.abs(i+0.5)*r*0.05;
+    [-1,1].forEach(s=>{
+      ctx.beginPath();
+      ctx.ellipse(fx+s*r*0.06, fy+r*0.02, r*0.05, r*0.025, s*0.6, 0, Math.PI*2);
+      ctx.fill();
+    });
+  }
+  // ── Band of little flowers across the head top ──
+  for(let i=-2;i<=2;i++){
+    const fx = cx + i*w*0.32;
+    const fy = topY + Math.abs(i)*r*0.06; // curve down at sides
+    const petalCol = ['#FF8FB0','#FFD166','#B58FFF','#7CD9FF','#FF8FB0'][i+2];
+    const petalDk  = ['#F26A92','#F0B23C','#9A6FE8','#4FBEE8','#F26A92'][i+2];
+    for(let p=0;p<5;p++){
+      const a=(p/5)*Math.PI*2;
+      // two-tone petals for depth
+      ctx.fillStyle=petalDk;
+      ctx.beginPath(); ctx.ellipse(fx+Math.cos(a)*r*0.085, fy+Math.sin(a)*r*0.085, r*0.058, r*0.038, a, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle=petalCol;
+      ctx.beginPath(); ctx.ellipse(fx+Math.cos(a)*r*0.075, fy+Math.sin(a)*r*0.075, r*0.045, r*0.028, a, 0, Math.PI*2); ctx.fill();
+    }
+    // glossy center
+    ctx.fillStyle='#FFF3B0'; ctx.beginPath(); ctx.arc(fx, fy, r*0.045, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.arc(fx-r*0.012, fy-r*0.012, r*0.018, 0, Math.PI*2); ctx.fill();
+    // soft sheen across the flower
+    ctx.fillStyle='rgba(255,255,255,0.25)';
+    ctx.beginPath(); ctx.ellipse(fx-r*0.04, fy-r*0.05, r*0.05, r*0.03, -0.5, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+// ── Bow (cute) — a classic ribbon bow perched on top ──
+function _drawBow(ctx, sq, r, t, cx, topY){
+  ctx.save();
+  const col = '#FF8FB0', col2 = '#F26A92';
+  const y = topY + r*0.06;
+  const lobe = r*0.34;
+  // ── Dangling ribbon tails (behind the bow) — adds cuteness/movement ──
+  ctx.fillStyle=col2;
+  [-1,1].forEach(s=>{
+    ctx.beginPath();
+    ctx.moveTo(cx+s*r*0.06, y+r*0.05);
+    ctx.quadraticCurveTo(cx+s*r*0.20, y+r*0.30, cx+s*r*0.16, y+r*0.52);
+    ctx.lineTo(cx+s*r*0.05, y+r*0.46);  // notched ribbon end
+    ctx.lineTo(cx+s*r*0.10, y+r*0.40);
+    ctx.lineTo(cx+s*r*0.02, y+r*0.30);
+    ctx.closePath(); ctx.fill();
+  });
+  // ── Two side lobes ──
+  [-1,1].forEach(s=>{
+    const g=ctx.createLinearGradient(cx, y-lobe, cx+s*lobe*1.4, y);
+    g.addColorStop(0,col); g.addColorStop(1,col2);
+    ctx.fillStyle=g;
+    ctx.beginPath();
+    ctx.moveTo(cx, y);
+    ctx.quadraticCurveTo(cx+s*lobe*1.5, y-lobe*0.95, cx+s*lobe*1.35, y);
+    ctx.quadraticCurveTo(cx+s*lobe*1.5, y+lobe*0.95, cx, y);
+    ctx.closePath(); ctx.fill();
+    // little white polka dots on each lobe
+    ctx.fillStyle='rgba(255,255,255,0.85)';
+    ctx.beginPath(); ctx.arc(cx+s*lobe*0.75, y-lobe*0.15, r*0.04, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx+s*lobe*0.95, y+lobe*0.2, r*0.03, 0, Math.PI*2); ctx.fill();
+  });
+  // ── Center knot ──
+  ctx.fillStyle=col2;
+  ctx.beginPath(); ctx.ellipse(cx, y, r*0.13, r*0.19, 0, 0, Math.PI*2); ctx.fill();
+  // shine
+  ctx.fillStyle='rgba(255,255,255,0.55)';
+  ctx.beginPath(); ctx.ellipse(cx-r*0.04, y-r*0.06, r*0.05, r*0.08, 0, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+// ── Beanie (cozy) — a snug knit cap pulled LOW over the head with a thick
+// folded brim (the signature beanie look) and a pom-pom. ──
+function _drawBeanie(ctx, sq, r, t, cx, topY){
+  ctx.save();
+  // Cozy warm knit colors — a soft cream-and-berry palette reads cuter than the
+  // squishy's raw body colors. Keep a hint of the squishy's accent for harmony.
+  const accent = sq.colors[2];
+  const knit = '#F2D9C8';     // warm cream knit
+  const knit2 = '#E7C0AC';    // shadow tone
+  const cuff = '#FF9EB5';     // soft berry cuff (the pop of cute)
+  const cuff2 = '#F47E9C';
+  const w = r*0.84;
+  const h = r*0.5;
+  const baseY = topY + r*0.42;
+  const domeTopY = baseY - h;
+  // ── Ear flaps first (behind the dome) — the signature cozy detail ──
+  [-1,1].forEach(s=>{
+    const fx = cx + s*w*0.78;
+    ctx.fillStyle = cuff;
+    ctx.beginPath();
+    ctx.moveTo(fx - s*r*0.12, baseY-r*0.02);
+    ctx.quadraticCurveTo(fx + s*r*0.05, baseY+r*0.28, fx - s*r*0.02, baseY+r*0.40);
+    ctx.quadraticCurveTo(fx - s*r*0.22, baseY+r*0.20, fx - s*r*0.20, baseY-r*0.02);
+    ctx.closePath(); ctx.fill();
+    // little braided tie dangling from each flap
+    ctx.strokeStyle=cuff2; ctx.lineWidth=r*0.05; ctx.lineCap='round';
+    ctx.beginPath();
+    ctx.moveTo(fx - s*r*0.02, baseY+r*0.40);
+    ctx.quadraticCurveTo(fx + s*r*0.02, baseY+r*0.55, fx - s*r*0.02, baseY+r*0.66);
+    ctx.stroke();
+    // pom at the end of each tie
+    ctx.fillStyle='#FFF6FB';
+    ctx.beginPath(); ctx.arc(fx - s*r*0.02, baseY+r*0.70, r*0.07, 0, Math.PI*2); ctx.fill();
+  });
+  // ── Knit dome ──
+  const g=ctx.createLinearGradient(cx, domeTopY, cx, baseY);
+  g.addColorStop(0, knit); g.addColorStop(1, knit2);
+  ctx.fillStyle=g;
+  ctx.beginPath();
+  ctx.moveTo(cx-w, baseY);
+  ctx.quadraticCurveTo(cx-w*0.94, domeTopY, cx, domeTopY);
+  ctx.quadraticCurveTo(cx+w*0.94, domeTopY, cx+w, baseY);
+  ctx.closePath(); ctx.fill();
+  // ── Cable-knit texture: pairs of wavy vertical strands (the cute braided look) ──
+  ctx.strokeStyle='rgba(180,130,100,0.4)'; ctx.lineWidth=r*0.035; ctx.lineCap='round';
+  for(let i=-2;i<=2;i++){
+    const bx=cx+i*w*0.36;
+    ctx.beginPath();
+    for(let yy=domeTopY+h*0.2; yy<baseY; yy+=r*0.08){
+      const wob=Math.sin(yy*0.5+i)*r*0.04;
+      yy===domeTopY+h*0.2 ? ctx.moveTo(bx+wob, yy) : ctx.lineTo(bx+wob, yy);
+    }
+    ctx.stroke();
+  }
+  // ── Chunky folded cuff (berry color) — soft and rounded ──
+  const brimH = r*0.30;
+  const bg=ctx.createLinearGradient(cx, baseY-brimH*0.5, cx, baseY+brimH*0.6);
+  bg.addColorStop(0, cuff); bg.addColorStop(1, cuff2);
+  ctx.fillStyle=bg;
+  ctx.beginPath();
+  ctx.moveTo(cx-w, baseY-brimH*0.4);
+  ctx.quadraticCurveTo(cx, baseY+brimH*0.55, cx+w, baseY-brimH*0.4);
+  ctx.lineTo(cx+w, baseY-brimH*0.55);
+  ctx.quadraticCurveTo(cx, baseY+brimH*0.25, cx-w, baseY-brimH*0.55);
+  ctx.closePath(); ctx.fill();
+  // cuff knit ribs
+  ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=r*0.03;
+  for(let i=-4;i<=4;i++){ const xx=cx+i*w*0.20; ctx.beginPath(); ctx.moveTo(xx, baseY-brimH*0.35); ctx.lineTo(xx, baseY+brimH*0.15); ctx.stroke(); }
+  // ── Big fluffy pom-pom (cluster of puffs) — the wow on top ──
+  const pomY=domeTopY+r*0.02;
+  ctx.fillStyle='#FFF6FB';
+  const puffs=[[0,0,r*0.17],[-r*0.12,-r*0.05,r*0.12],[r*0.12,-r*0.04,r*0.12],[0,-r*0.14,r*0.12],[-r*0.07,r*0.08,r*0.1],[r*0.07,r*0.08,r*0.1]];
+  puffs.forEach(([px,py,ps])=>{ ctx.beginPath(); ctx.arc(cx+px, pomY+py, ps, 0, Math.PI*2); ctx.fill(); });
+  ctx.fillStyle='rgba(255,180,210,0.4)';
+  ctx.beginPath(); ctx.arc(cx, pomY, r*0.08, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+// ── Wizard hat (magical) — a tall starry cone with a brim ──
+function _drawWizardHat(ctx, sq, r, t, cx, topY){
+  ctx.save();
+  const w = r*0.55, h = r*1.05;
+  const tipX = cx + Math.sin(t*0.03)*r*0.08; // gentle magical sway
+  const tipY = topY - h;
+  // brim (rounded, slightly lighter than before)
+  ctx.fillStyle='#4A3A85';
+  ctx.beginPath(); ctx.ellipse(cx, topY+r*0.02, w*1.5, r*0.17, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle='#5E4AA8';
+  ctx.beginPath(); ctx.ellipse(cx, topY-r*0.01, w*1.35, r*0.13, 0, 0, Math.PI*2); ctx.fill();
+  // cone — brighter, more saturated magical purple→blue
+  const g=ctx.createLinearGradient(cx-w, topY, cx+w*0.3, tipY);
+  g.addColorStop(0,'#6B4BC0'); g.addColorStop(0.5,'#8E6FE8'); g.addColorStop(1,'#A98BFF');
+  ctx.fillStyle=g;
+  ctx.beginPath();
+  ctx.moveTo(cx-w, topY);
+  ctx.quadraticCurveTo(cx-w*0.35, topY-h*0.5, tipX, tipY);
+  ctx.quadraticCurveTo(cx+w*0.35, topY-h*0.5, cx+w, topY);
+  ctx.closePath(); ctx.fill();
+  // glowing tip orb
+  const glowR=r*0.16;
+  const tipGlow=ctx.createRadialGradient(tipX,tipY,0,tipX,tipY,glowR);
+  tipGlow.addColorStop(0,'rgba(255,245,180,0.95)'); tipGlow.addColorStop(1,'rgba(255,220,120,0)');
+  ctx.fillStyle=tipGlow; ctx.beginPath(); ctx.arc(tipX,tipY,glowR,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#FFF2B0'; ctx.beginPath(); ctx.arc(tipX,tipY,r*0.05,0,Math.PI*2); ctx.fill();
+  // crescent moon on the front (the whimsy)
+  const mx=cx, my=topY-h*0.42;
+  ctx.fillStyle='#FFE37A';
+  ctx.beginPath(); ctx.arc(mx, my, r*0.13, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle=g; // carve crescent with cone color (approx)
+  ctx.save(); ctx.fillStyle='#8E6FE8';
+  ctx.beginPath(); ctx.arc(mx+r*0.05, my-r*0.02, r*0.12, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+  // little stars sprinkled
+  ctx.fillStyle='#FFE37A';
+  const stars=[[cx-w*0.28, topY-h*0.2, r*0.06],[cx+w*0.2, topY-h*0.62, r*0.05],[cx-w*0.1, topY-h*0.78, r*0.045]];
+  stars.forEach(([sxp,syp,sz])=>{
+    ctx.beginPath();
+    for(let p=0;p<5;p++){ const a=-Math.PI/2+p*4*Math.PI/5; const x2=sxp+Math.cos(a)*sz, y2=syp+Math.sin(a)*sz; p===0?ctx.moveTo(x2,y2):ctx.lineTo(x2,y2); }
+    ctx.closePath(); ctx.fill();
+  });
+  ctx.restore();
+}
+// ── Cap (sporty everyday) — a cute curved-brim ball cap with a button + emblem ──
+function _drawCap(ctx, sq, r, t, cx, topY){
+  ctx.save();
+  const col='#5BC8E8', col2='#3AA8D0';   // friendly sky blue
+  const w=r*0.78, h=r*0.5;
+  const baseY=topY+r*0.30;                // sits down on the head
+  const domeTopY=baseY-h;
+  // curved brim sweeping forward (to the left here)
+  ctx.fillStyle=col2;
+  ctx.beginPath();
+  ctx.moveTo(cx-w*0.2, baseY-r*0.02);
+  ctx.quadraticCurveTo(cx-w*1.35, baseY+r*0.04, cx-w*1.25, baseY+r*0.14);
+  ctx.quadraticCurveTo(cx-w*0.5, baseY+r*0.10, cx-w*0.1, baseY);
+  ctx.closePath(); ctx.fill();
+  // rounded crown
+  const g=ctx.createLinearGradient(cx,domeTopY,cx,baseY);
+  g.addColorStop(0,col); g.addColorStop(1,col2);
+  ctx.fillStyle=g;
+  ctx.beginPath();
+  ctx.moveTo(cx-w,baseY);
+  ctx.quadraticCurveTo(cx-w*0.95,domeTopY,cx,domeTopY);
+  ctx.quadraticCurveTo(cx+w*0.95,domeTopY,cx+w,baseY);
+  ctx.closePath(); ctx.fill();
+  // panel seams
+  ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.lineWidth=r*0.02;
+  ctx.beginPath(); ctx.moveTo(cx,domeTopY); ctx.lineTo(cx,baseY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx-w*0.5,domeTopY+h*0.3); ctx.lineTo(cx-w*0.55,baseY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx+w*0.5,domeTopY+h*0.3); ctx.lineTo(cx+w*0.55,baseY); ctx.stroke();
+  // button on top
+  ctx.fillStyle='#FFF'; ctx.beginPath(); ctx.arc(cx,domeTopY+r*0.01,r*0.06,0,Math.PI*2); ctx.fill();
+  // cute heart emblem on the front
+  ctx.fillStyle='#FF6FA5';
+  const hx=cx, hy=baseY-h*0.45, hs=r*0.13;
+  ctx.beginPath();
+  ctx.moveTo(hx,hy+hs*0.3);
+  ctx.bezierCurveTo(hx-hs,hy-hs*0.5,hx-hs*0.5,hy-hs,hx,hy-hs*0.3);
+  ctx.bezierCurveTo(hx+hs*0.5,hy-hs,hx+hs,hy-hs*0.5,hx,hy+hs*0.3);
+  ctx.fill();
+  ctx.restore();
+}
+// ── Chef hat (playful, kitchen-themed) — a puffy white toque ──
+function _drawChefHat(ctx, sq, r, t, cx, topY){
+  ctx.save();
+  const w=r*0.62, h=r*0.55;
+  const bandY=topY+r*0.12;
+  const bandH=r*0.26;
+  // puffy top — overlapping cloud-like puffs (the cute factor), softly shaded
+  const puffs=[[-w*0.6,bandY-h*0.55,r*0.34],[0,bandY-h*0.95,r*0.42],[w*0.6,bandY-h*0.55,r*0.34],[-w*0.25,bandY-h*0.7,r*0.3],[w*0.25,bandY-h*0.7,r*0.3]];
+  puffs.forEach(([px,py,ps])=>{
+    const pg=ctx.createRadialGradient(cx+px-ps*0.3, py-ps*0.3, ps*0.1, cx+px, py, ps);
+    pg.addColorStop(0,'#FFFFFF'); pg.addColorStop(1,'#E8E8F0');
+    ctx.fillStyle=pg;
+    ctx.beginPath(); ctx.arc(cx+px,py,ps,0,Math.PI*2); ctx.fill();
+  });
+  // bright highlight on the top puff
+  ctx.fillStyle='rgba(255,255,255,0.85)';
+  ctx.beginPath(); ctx.ellipse(cx-r*0.12, bandY-h*1.05, r*0.12, r*0.08, -0.4, 0, Math.PI*2); ctx.fill();
+  // soft shadow under the puffs for depth
+  ctx.fillStyle='rgba(0,0,0,0.05)';
+  ctx.beginPath(); ctx.ellipse(cx,bandY-bandH*0.1,w*1.0,r*0.12,0,0,Math.PI*2); ctx.fill();
+  // pleated band (cuff)
+  const bg=ctx.createLinearGradient(cx,bandY-bandH*0.5,cx,bandY+bandH*0.5);
+  bg.addColorStop(0,'#FFFFFF'); bg.addColorStop(1,'#EDEDF2');
+  ctx.fillStyle=bg;
+  ctx.beginPath(); ctx.roundRect(cx-w*0.95,bandY-bandH*0.5,w*1.9,bandH,r*0.06); ctx.fill();
+  // pleat lines
+  ctx.strokeStyle='rgba(0,0,0,0.10)'; ctx.lineWidth=r*0.02;
+  for(let i=-3;i<=3;i++){ const xx=cx+i*w*0.28; ctx.beginPath(); ctx.moveTo(xx,bandY-bandH*0.4); ctx.lineTo(xx,bandY+bandH*0.4); ctx.stroke(); }
+  ctx.restore();
+}
+// ── Top hat (fancy/silly) — a dapper little topper with a ribbon band + star ──
+function _drawTopHat(ctx, sq, r, t, cx, topY){
+  ctx.save();
+  const col='#3A3550', col2='#56507A';   // soft midnight (not harsh black)
+  const w=r*0.5, h=r*0.78;
+  const baseY=topY+r*0.04;
+  const topYY=baseY-h;
+  // brim (rounded ellipse)
+  ctx.fillStyle=col;
+  ctx.beginPath(); ctx.ellipse(cx,baseY,w*1.55,r*0.15,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=col2;
+  ctx.beginPath(); ctx.ellipse(cx,baseY-r*0.02,w*1.4,r*0.11,0,0,Math.PI*2); ctx.fill();
+  // stovepipe body (slightly flared top for a cuter, less stiff look)
+  const g=ctx.createLinearGradient(cx-w,baseY,cx+w,baseY);
+  g.addColorStop(0,col); g.addColorStop(0.5,col2); g.addColorStop(1,col);
+  ctx.fillStyle=g;
+  ctx.beginPath();
+  ctx.moveTo(cx-w*0.92,baseY);
+  ctx.lineTo(cx-w,topYY);
+  ctx.quadraticCurveTo(cx,topYY-r*0.06,cx+w,topYY);
+  ctx.lineTo(cx+w*0.92,baseY);
+  ctx.closePath(); ctx.fill();
+  // top ellipse
+  ctx.fillStyle=col2;
+  ctx.beginPath(); ctx.ellipse(cx,topYY,w,r*0.08,0,0,Math.PI*2); ctx.fill();
+  // ribbon band (a pop of color)
+  ctx.fillStyle='#FF6FA5';
+  ctx.beginPath(); ctx.roundRect(cx-w*0.96,baseY-r*0.20,w*1.88,r*0.16,r*0.03); ctx.fill();
+  // little star on the band (the silly-fancy charm)
+  ctx.fillStyle='#FFE37A';
+  const sx=cx, sy=baseY-r*0.12, ss=r*0.08;
+  ctx.beginPath();
+  for(let p=0;p<5;p++){ const a=-Math.PI/2+p*4*Math.PI/5; const x2=sx+Math.cos(a)*ss, y2=sy+Math.sin(a)*ss; p===0?ctx.moveTo(x2,y2):ctx.lineTo(x2,y2); }
+  ctx.closePath(); ctx.fill();
+  // shine streak
+  ctx.fillStyle='rgba(255,255,255,0.12)';
+  ctx.beginPath(); ctx.ellipse(cx-w*0.4,baseY-h*0.5,r*0.06,h*0.32,0,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+// ── Cat-ear headband (silly-cute) — a band with two fuzzy kitty ears ──
+function _drawCatEars(ctx, sq, r, t, cx, topY){
+  ctx.save();
+  const band='#FF8FB0', band2='#F26A92';
+  const inner='#FFD0E0';
+  const headY=topY+r*0.30;  // band hugs the head
+  // the two ears
+  [-1,1].forEach(s=>{
+    const ex=cx+s*r*0.5;
+    const eBaseY=headY-r*0.05;
+    const eTipY=eBaseY-r*0.5;
+    // outer ear (triangle with rounded feel) — soft gradient for dimension
+    const eg=ctx.createLinearGradient(ex, eTipY, ex, eBaseY);
+    eg.addColorStop(0,'#FFA8C4'); eg.addColorStop(1,band);
+    ctx.fillStyle=eg;
+    ctx.beginPath();
+    ctx.moveTo(ex-r*0.22, eBaseY);
+    ctx.quadraticCurveTo(ex-r*0.05, eTipY-r*0.04, ex+s*r*0.02, eTipY);
+    ctx.quadraticCurveTo(ex+r*0.12, eTipY+r*0.06, ex+r*0.22, eBaseY);
+    ctx.closePath(); ctx.fill();
+    // inner ear (pink)
+    ctx.fillStyle=inner;
+    ctx.beginPath();
+    ctx.moveTo(ex-r*0.11, eBaseY-r*0.04);
+    ctx.quadraticCurveTo(ex-r*0.01, eTipY+r*0.10, ex+s*r*0.01, eTipY+r*0.07);
+    ctx.quadraticCurveTo(ex+r*0.08, eTipY+r*0.12, ex+r*0.11, eBaseY-r*0.04);
+    ctx.closePath(); ctx.fill();
+  });
+  // the headband arc across the head
+  ctx.strokeStyle=band2; ctx.lineWidth=r*0.13; ctx.lineCap='round';
+  ctx.beginPath();
+  ctx.arc(cx, headY+r*0.35, r*0.62, Math.PI*1.15, Math.PI*1.85);
+  ctx.stroke();
+  // band highlight
+  ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=r*0.04;
+  ctx.beginPath();
+  ctx.arc(cx, headY+r*0.35, r*0.66, Math.PI*1.2, Math.PI*1.8);
+  ctx.stroke();
+  ctx.restore();
+}
+// ═══════════════════════════════════════════════════════════════════
+// ===== HELD ITEMS — accessories the squishy "holds" =====
+// These limbless squishies can't grip things, so held items anchor to the
+// side/front base and read as "their item" tucked beside or floating near them.
+// Signature: r-relative sizing, anchored off the body so they never cover the
+// face. cx=0 is body center; the body bottom is ~ +r.
+// ═══════════════════════════════════════════════════════════════════
+// ── Balloon (floats up beside the squishy on a string) ──
+function _drawBalloon(ctx, sq, r, t, cx, topY){
+  ctx.save();
+  const bx = cx + r*0.92;                 // off to the right side
+  const sway = Math.sin(t*0.04)*r*0.04;   // gentle float
+  const balloonY = -r*0.55 + sway;        // up high beside them
+  const handX = cx + r*0.62, handY = r*0.55; // string anchor near base
+  // string
+  ctx.strokeStyle='rgba(120,120,140,0.7)'; ctx.lineWidth=r*0.025;
+  ctx.beginPath();
+  ctx.moveTo(handX, handY);
+  ctx.quadraticCurveTo(bx-r*0.1, (balloonY+handY)/2, bx+sway, balloonY+r*0.32);
+  ctx.stroke();
+  // balloon body
+  const g=ctx.createRadialGradient(bx-r*0.1+sway, balloonY-r*0.12, r*0.04, bx+sway, balloonY, r*0.4);
+  g.addColorStop(0,'#FF9EC4'); g.addColorStop(1,'#F25D9A');
+  ctx.fillStyle=g;
+  ctx.beginPath(); ctx.ellipse(bx+sway, balloonY, r*0.3, r*0.36, 0, 0, Math.PI*2); ctx.fill();
+  // knot
+  ctx.fillStyle='#F25D9A';
+  ctx.beginPath(); ctx.moveTo(bx+sway-r*0.05, balloonY+r*0.34); ctx.lineTo(bx+sway+r*0.05, balloonY+r*0.34); ctx.lineTo(bx+sway, balloonY+r*0.42); ctx.closePath(); ctx.fill();
+  // shine
+  ctx.fillStyle='rgba(255,255,255,0.5)';
+  ctx.beginPath(); ctx.ellipse(bx+sway-r*0.1, balloonY-r*0.12, r*0.06, r*0.09, -0.4, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+// Icon version: a centered balloon with a short string (the worn version floats
+// off to the side with a long string, which doesn't frame well in a small cell).
+function _iconBalloon(ctx, sq, r, t, cx, cy){
+  ctx.save();
+  const by = cy - r*0.2;
+  // string
+  ctx.strokeStyle='rgba(120,120,140,0.7)'; ctx.lineWidth=r*0.04;
+  ctx.beginPath(); ctx.moveTo(cx, by+r*0.42); ctx.quadraticCurveTo(cx+r*0.08, by+r*0.7, cx, cy+r*0.9); ctx.stroke();
+  // body
+  const g=ctx.createRadialGradient(cx-r*0.12, by-r*0.14, r*0.04, cx, by, r*0.5);
+  g.addColorStop(0,'#FF9EC4'); g.addColorStop(1,'#F25D9A');
+  ctx.fillStyle=g;
+  ctx.beginPath(); ctx.ellipse(cx, by, r*0.4, r*0.48, 0, 0, Math.PI*2); ctx.fill();
+  // knot
+  ctx.fillStyle='#F25D9A';
+  ctx.beginPath(); ctx.moveTo(cx-r*0.07, by+r*0.45); ctx.lineTo(cx+r*0.07, by+r*0.45); ctx.lineTo(cx, by+r*0.56); ctx.closePath(); ctx.fill();
+  // shine
+  ctx.fillStyle='rgba(255,255,255,0.5)';
+  ctx.beginPath(); ctx.ellipse(cx-r*0.13, by-r*0.16, r*0.08, r*0.12, -0.4, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+// ── Flower (tucked at the side, like the squishy is holding a bloom) ──
+function _drawFlower(ctx, sq, r, t, cx, topY){
+  ctx.save();
+  const fx=cx+r*0.82, fy=r*0.25;          // beside them, lower
+  const sway=Math.sin(t*0.04)*0.08;
+  ctx.translate(fx, fy); ctx.rotate(0.25+sway);
+  // stem
+  ctx.strokeStyle='#6FBF6A'; ctx.lineWidth=r*0.06; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(0, r*0.5); ctx.quadraticCurveTo(-r*0.06,0,-r*0.02,-r*0.3); ctx.stroke();
+  // leaf
+  ctx.fillStyle='#8FD98A';
+  ctx.beginPath(); ctx.ellipse(-r*0.12, r*0.12, r*0.12, r*0.06, -0.5, 0, Math.PI*2); ctx.fill();
+  // petals
+  const petalCol=sq.colors[2]||'#FF8FB0';
+  for(let p=0;p<6;p++){ const a=(p/6)*Math.PI*2; ctx.fillStyle=petalCol;
+    ctx.beginPath(); ctx.ellipse(Math.cos(a)*r*0.18, -r*0.3+Math.sin(a)*r*0.18, r*0.13, r*0.08, a, 0, Math.PI*2); ctx.fill(); }
+  ctx.fillStyle='#FFF3B0'; ctx.beginPath(); ctx.arc(0,-r*0.3,r*0.1,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.arc(-r*0.03,-r*0.33,r*0.04,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+function _iconFlower(ctx, sq, r, t, cx, cy){
+  ctx.save();
+  ctx.strokeStyle='#6FBF6A'; ctx.lineWidth=r*0.08; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(cx, cy+r*0.7); ctx.lineTo(cx, cy); ctx.stroke();
+  ctx.fillStyle='#8FD98A'; ctx.beginPath(); ctx.ellipse(cx-r*0.18, cy+r*0.35, r*0.16, r*0.08, -0.5, 0, Math.PI*2); ctx.fill();
+  const petalCol=sq.colors[2]||'#FF8FB0';
+  for(let p=0;p<6;p++){ const a=(p/6)*Math.PI*2; ctx.fillStyle=petalCol;
+    ctx.beginPath(); ctx.ellipse(cx+Math.cos(a)*r*0.26, cy-r*0.35+Math.sin(a)*r*0.26, r*0.18, r*0.11, a, 0, Math.PI*2); ctx.fill(); }
+  ctx.fillStyle='#FFF3B0'; ctx.beginPath(); ctx.arc(cx, cy-r*0.35, r*0.14, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+// ── Star wand (floats beside them, sparkly) ──
+function _drawStarWand(ctx, sq, r, t, cx, topY){
+  ctx.save();
+  const wx=cx+r*0.85, wy=-r*0.1;
+  const tw=0.9+0.1*Math.sin(t*0.1);
+  ctx.translate(wx, wy); ctx.rotate(0.4);
+  // stick
+  ctx.strokeStyle='#C9A6F0'; ctx.lineWidth=r*0.06; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-r*0.1, r*0.6); ctx.stroke();
+  // star
+  ctx.fillStyle='#FFE37A'; ctx.scale(tw,tw);
+  ctx.beginPath();
+  for(let p=0;p<5;p++){ const a=-Math.PI/2+p*4*Math.PI/5; const x2=Math.cos(a)*r*0.28, y2=Math.sin(a)*r*0.28; p===0?ctx.moveTo(x2,y2):ctx.lineTo(x2,y2); }
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.arc(-r*0.06,-r*0.06,r*0.05,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+function _iconStarWand(ctx, sq, r, t, cx, cy){
+  ctx.save();
+  ctx.strokeStyle='#C9A6F0'; ctx.lineWidth=r*0.09; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(cx, cy-r*0.1); ctx.lineTo(cx-r*0.18, cy+r*0.7); ctx.stroke();
+  ctx.fillStyle='#FFE37A';
+  ctx.beginPath();
+  for(let p=0;p<5;p++){ const a=-Math.PI/2+p*4*Math.PI/5; const x2=cx+Math.cos(a)*r*0.42, y2=cy-r*0.15+Math.sin(a)*r*0.42; p===0?ctx.moveTo(x2,y2):ctx.lineTo(x2,y2); }
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.arc(cx-r*0.1, cy-r*0.25, r*0.08, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+// ── Ice cream cone (held at the front-side) ──
+function _drawIceCream(ctx, sq, r, t, cx, topY){
+  ctx.save();
+  const ix=cx+r*0.8, iy=r*0.1;
+  ctx.translate(ix, iy); ctx.rotate(0.15);
+  // cone
+  ctx.fillStyle='#E0A86B';
+  ctx.beginPath(); ctx.moveTo(-r*0.18, 0); ctx.lineTo(r*0.18, 0); ctx.lineTo(0, r*0.55); ctx.closePath(); ctx.fill();
+  // waffle lines
+  ctx.strokeStyle='rgba(150,100,50,0.5)'; ctx.lineWidth=r*0.02;
+  ctx.beginPath(); ctx.moveTo(-r*0.1,r*0.14); ctx.lineTo(r*0.04,r*0.42); ctx.moveTo(r*0.1,r*0.14); ctx.lineTo(-r*0.04,r*0.42); ctx.stroke();
+  // two scoops
+  ctx.fillStyle='#FF9EC4'; ctx.beginPath(); ctx.arc(0,-r*0.05,r*0.2,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#A8E6CF'; ctx.beginPath(); ctx.arc(0,-r*0.28,r*0.18,0,Math.PI*2); ctx.fill();
+  // creamy gloss highlights
+  ctx.fillStyle='rgba(255,255,255,0.45)';
+  ctx.beginPath(); ctx.ellipse(-r*0.07,-r*0.12,r*0.06,r*0.04,-0.5,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-r*0.06,-r*0.34,r*0.05,r*0.035,-0.5,0,Math.PI*2); ctx.fill();
+  // cherry
+  ctx.fillStyle='#FF5D6C'; ctx.beginPath(); ctx.arc(0,-r*0.45,r*0.06,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+function _iconIceCream(ctx, sq, r, t, cx, cy){
+  ctx.save();
+  ctx.fillStyle='#E0A86B';
+  ctx.beginPath(); ctx.moveTo(cx-r*0.26,cy+r*0.05); ctx.lineTo(cx+r*0.26,cy+r*0.05); ctx.lineTo(cx,cy+r*0.8); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='rgba(150,100,50,0.5)'; ctx.lineWidth=r*0.03;
+  ctx.beginPath(); ctx.moveTo(cx-r*0.14,cy+r*0.25); ctx.lineTo(cx+r*0.06,cy+r*0.62); ctx.moveTo(cx+r*0.14,cy+r*0.25); ctx.lineTo(cx-r*0.06,cy+r*0.62); ctx.stroke();
+  ctx.fillStyle='#FF9EC4'; ctx.beginPath(); ctx.arc(cx,cy-r*0.05,r*0.28,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#A8E6CF'; ctx.beginPath(); ctx.arc(cx,cy-r*0.36,r*0.25,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#FF5D6C'; ctx.beginPath(); ctx.arc(cx,cy-r*0.58,r*0.08,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+// ── Lollipop (swirly, held beside them) ──
+function _drawLollipop(ctx, sq, r, t, cx, topY){
+  ctx.save();
+  const lx=cx+r*0.82, ly=0;
+  ctx.translate(lx, ly); ctx.rotate(0.2);
+  // stick
+  ctx.strokeStyle='#FFFFFF'; ctx.lineWidth=r*0.05; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-r*0.06,r*0.55); ctx.stroke();
+  ctx.strokeStyle='rgba(0,0,0,0.08)'; ctx.lineWidth=r*0.05;
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-r*0.06,r*0.55); ctx.stroke();
+  // candy disc with swirl
+  ctx.fillStyle='#FF8FB0'; ctx.beginPath(); ctx.arc(0,-r*0.05,r*0.26,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#FFFFFF'; ctx.lineWidth=r*0.05;
+  ctx.beginPath();
+  for(let a=0;a<Math.PI*4;a+=0.2){ const rad=r*0.02+a*r*0.02; const x2=Math.cos(a)*rad, y2=-r*0.05+Math.sin(a)*rad; a===0?ctx.moveTo(x2,y2):ctx.lineTo(x2,y2); }
+  ctx.stroke();
+  ctx.restore();
+}
+function _iconLollipop(ctx, sq, r, t, cx, cy){
+  ctx.save();
+  ctx.strokeStyle='#FFFFFF'; ctx.lineWidth=r*0.08; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(cx, cy-r*0.05); ctx.lineTo(cx-r*0.08, cy+r*0.7); ctx.stroke();
+  ctx.strokeStyle='rgba(0,0,0,0.08)'; ctx.lineWidth=r*0.08;
+  ctx.beginPath(); ctx.moveTo(cx, cy-r*0.05); ctx.lineTo(cx-r*0.08, cy+r*0.7); ctx.stroke();
+  ctx.fillStyle='#FF8FB0'; ctx.beginPath(); ctx.arc(cx,cy-r*0.12,r*0.38,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#FFFFFF'; ctx.lineWidth=r*0.07;
+  ctx.beginPath();
+  for(let a=0;a<Math.PI*4;a+=0.2){ const rad=r*0.03+a*r*0.03; const x2=cx+Math.cos(a)*rad, y2=cy-r*0.12+Math.sin(a)*rad; a===0?ctx.moveTo(x2,y2):ctx.lineTo(x2,y2); }
+  ctx.stroke();
+  ctx.restore();
+}
+// ── Teddy bear (a little plushie hugged at the side — peak cute) ──
+function _drawTeddy(ctx, sq, r, t, cx, topY){
+  ctx.save();
+  const tx=cx+r*0.78, ty=r*0.18;
+  const bob=Math.sin(t*0.05)*r*0.02;
+  ctx.translate(tx, ty+bob);
+  const fur='#C98F5E', fur2='#B57A48', tum='#EAD2B0';
+  // ears
+  ctx.fillStyle=fur;
+  [[-1],[1]].forEach(([s])=>{ ctx.beginPath(); ctx.arc(s*r*0.18, -r*0.34, r*0.1, 0, Math.PI*2); ctx.fill(); });
+  ctx.fillStyle=tum;
+  [[-1],[1]].forEach(([s])=>{ ctx.beginPath(); ctx.arc(s*r*0.18, -r*0.34, r*0.05, 0, Math.PI*2); ctx.fill(); });
+  // body
+  ctx.fillStyle=fur2; ctx.beginPath(); ctx.ellipse(0, r*0.14, r*0.24, r*0.26, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle=tum; ctx.beginPath(); ctx.ellipse(0, r*0.16, r*0.13, r*0.16, 0, 0, Math.PI*2); ctx.fill();
+  // arms/legs
+  ctx.fillStyle=fur;
+  [[-0.22,0.02],[0.22,0.02],[-0.13,0.34],[0.13,0.34]].forEach(([ax,ay])=>{ ctx.beginPath(); ctx.arc(ax*r, ay*r+r*0.06, r*0.08, 0, Math.PI*2); ctx.fill(); });
+  // head
+  const g=ctx.createRadialGradient(-r*0.05,-r*0.18,r*0.02,0,-r*0.12,r*0.26);
+  g.addColorStop(0,'#D9A06E'); g.addColorStop(1,fur);
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,-r*0.12,r*0.22,0,Math.PI*2); ctx.fill();
+  // muzzle
+  ctx.fillStyle=tum; ctx.beginPath(); ctx.ellipse(0,-r*0.04,r*0.11,r*0.09,0,0,Math.PI*2); ctx.fill();
+  // eyes + nose
+  ctx.fillStyle='#3A2410';
+  ctx.beginPath(); ctx.arc(-r*0.08,-r*0.16,r*0.03,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(r*0.08,-r*0.16,r*0.03,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(0,-r*0.06,r*0.035,0,Math.PI*2); ctx.fill();
+  // eye catchlights (brings it to life)
+  ctx.fillStyle='#FFFFFF';
+  ctx.beginPath(); ctx.arc(-r*0.07,-r*0.17,r*0.011,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(r*0.09,-r*0.17,r*0.011,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+function _iconTeddy(ctx, sq, r, t, cx, cy){
+  ctx.save();
+  ctx.translate(cx, cy); const R=r*1.5;
+  const fur='#C98F5E', fur2='#B57A48', tum='#EAD2B0';
+  ctx.fillStyle=fur;
+  [[-1],[1]].forEach(([s])=>{ ctx.beginPath(); ctx.arc(s*R*0.18, -R*0.34, R*0.1, 0, Math.PI*2); ctx.fill(); });
+  ctx.fillStyle=tum;
+  [[-1],[1]].forEach(([s])=>{ ctx.beginPath(); ctx.arc(s*R*0.18, -R*0.34, R*0.05, 0, Math.PI*2); ctx.fill(); });
+  ctx.fillStyle=fur2; ctx.beginPath(); ctx.ellipse(0, R*0.14, R*0.24, R*0.26, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle=tum; ctx.beginPath(); ctx.ellipse(0, R*0.16, R*0.13, R*0.16, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle=fur;
+  [[-0.22,0.02],[0.22,0.02],[-0.13,0.34],[0.13,0.34]].forEach(([ax,ay])=>{ ctx.beginPath(); ctx.arc(ax*R, ay*R+R*0.06, R*0.08, 0, Math.PI*2); ctx.fill(); });
+  const g=ctx.createRadialGradient(-R*0.05,-R*0.18,R*0.02,0,-R*0.12,R*0.26);
+  g.addColorStop(0,'#D9A06E'); g.addColorStop(1,fur);
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,-R*0.12,R*0.22,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=tum; ctx.beginPath(); ctx.ellipse(0,-R*0.04,R*0.11,R*0.09,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#3A2410';
+  ctx.beginPath(); ctx.arc(-R*0.08,-R*0.16,R*0.03,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(R*0.08,-R*0.16,R*0.03,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(0,-R*0.06,R*0.035,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+// ── Book (a cozy little storybook held at the side) ──
+function _drawBook(ctx, sq, r, t, cx, topY){
+  ctx.save();
+  const bx2=cx+r*0.78, by2=r*0.22;
+  ctx.translate(bx2, by2); ctx.rotate(-0.12);
+  const cover=sq.colors[2]||'#7AA8E0', cover2='#FFFFFF';
+  // cover
+  ctx.fillStyle=cover;
+  ctx.beginPath(); ctx.roundRect(-r*0.3,-r*0.34,r*0.6,r*0.62,r*0.05); ctx.fill();
+  // pages (right edge)
+  ctx.fillStyle=cover2;
+  ctx.beginPath(); ctx.roundRect(-r*0.24,-r*0.30,r*0.5,r*0.54,r*0.03); ctx.fill();
+  // page lines
+  ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.lineWidth=r*0.02;
+  for(let i=0;i<4;i++){ const yy=-r*0.18+i*r*0.13; ctx.beginPath(); ctx.moveTo(-r*0.16,yy); ctx.lineTo(r*0.16,yy); ctx.stroke(); }
+  // spine
+  ctx.fillStyle=cover;
+  ctx.beginPath(); ctx.roundRect(-r*0.3,-r*0.34,r*0.1,r*0.62,r*0.03); ctx.fill();
+  // little heart/star on cover corner
+  ctx.fillStyle='#FFE37A';
+  ctx.beginPath(); ctx.arc(-r*0.25,-r*0.22,r*0.04,0,Math.PI*2); ctx.fill();
+  // bookmark
+  ctx.fillStyle='#FF6FA5';
+  ctx.beginPath(); ctx.moveTo(r*0.1,-r*0.34); ctx.lineTo(r*0.18,-r*0.34); ctx.lineTo(r*0.18,-r*0.18); ctx.lineTo(r*0.14,-r*0.23); ctx.lineTo(r*0.1,-r*0.18); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+function _iconBook(ctx, sq, r, t, cx, cy){
+  ctx.save();
+  ctx.translate(cx, cy); const R=r*1.3;
+  const cover=sq.colors[2]||'#7AA8E0';
+  ctx.fillStyle=cover;
+  ctx.beginPath(); ctx.roundRect(-R*0.3,-R*0.34,R*0.6,R*0.62,R*0.05); ctx.fill();
+  ctx.fillStyle='#FFFFFF';
+  ctx.beginPath(); ctx.roundRect(-R*0.24,-R*0.30,R*0.5,R*0.54,R*0.03); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.lineWidth=R*0.02;
+  for(let i=0;i<4;i++){ const yy=-R*0.18+i*R*0.13; ctx.beginPath(); ctx.moveTo(-R*0.16,yy); ctx.lineTo(R*0.16,yy); ctx.stroke(); }
+  ctx.fillStyle=cover;
+  ctx.beginPath(); ctx.roundRect(-R*0.3,-R*0.34,R*0.1,R*0.62,R*0.03); ctx.fill();
+  ctx.fillStyle='#FFE37A';
+  ctx.beginPath(); ctx.arc(-R*0.25,-R*0.22,R*0.04,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#FF6FA5';
+  ctx.beginPath(); ctx.moveTo(R*0.1,-R*0.34); ctx.lineTo(R*0.18,-R*0.34); ctx.lineTo(R*0.18,-R*0.18); ctx.lineTo(R*0.14,-R*0.23); ctx.lineTo(R*0.1,-R*0.18); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
 let baoT = 0, _baoReady = false;
 function drawBaoBao() {
   const canvas = document.getElementById('bao-canvas');
@@ -2874,7 +3716,7 @@ function drawBaoBao() {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, 160, 160);
   baoT++;
-  _safeDraw(ctx, SQUISHIES[0], 80, 82, 60, baoT);
+  _safeDraw(ctx, SQUISHIES[0], 80, 82, 60, baoT, true); // true = no outfit (mascot stays bare)
   // Sparkles
   const sparkles = [[20,25],[140,30],[15,120],[145,110],[80,10]];
   sparkles.forEach(([sx,sy],i)=>{
@@ -9486,8 +10328,7 @@ function debugUnlockHome(){
   showToast('🛠 Walk left — treehouse is right there! 🏡');
 }
 
-// ▼▼▼ DEV ONLY — REMOVE BEFORE LAUNCH ▼▼▼
-// One-tap shortcut for development: unlocks the home and drops you straight
+// ▼▼▼ DEV ONLY — REMOVE BEFORE LAUNCH ▼▼▼// One-tap shortcut for development: unlocks the home and drops you straight
 // into the treehouse room screen, skipping park exploration. Safe to delete
 // entirely along with its button on the welcome screen.
 function devJumpToTreehouse(){
@@ -9503,6 +10344,38 @@ function devJumpToTreehouse(){
   state.currentRoom='living';
   saveState();
   showScreen('home');
+}
+// DEV: equip the 3 prototype hats across structurally-different squishies so we
+// can screenshot how outfits fit each body shape. Grants the sample squishies if
+// not yet collected (dev only). Delete with the rest of the dev block.
+function devTestOutfits(){
+  if(!state.equippedOutfits) state.equippedOutfits={};
+  // Toggle: if outfits are already equipped, CLEAR them all + reset premium.
+  const anyEquipped=Object.keys(state.equippedOutfits).length>0;
+  if(anyEquipped){
+    state.equippedOutfits={};
+    state.isPremium=false; // back to free-player view
+    for(const k in _spriteCache) delete _spriteCache[k];
+    saveState();
+    if(typeof showToast==='function') showToast('🧹 Cleared outfits + premium OFF (free-player view)');
+    return;
+  }
+  if(!state.counts) state.counts={};
+  const hats=['party_hat','crown','flower'];
+  const ids=SQUISHIES.map(s=>s.id);
+  ids.forEach((id,i)=>{
+    if(i>=14) return;
+    if(!state.collected.includes(id)) state.collected.push(id);
+    state.counts[id]=Math.max(1,state.counts[id]||0);
+    state.equippedOutfits[id]={hat:hats[i%3]};
+  });
+  state.isPremium=true; // unlock premium so all outfits are usable in dev
+  for(const k in _spriteCache) delete _spriteCache[k];
+  saveState();
+  if(state.firstTime) state.firstTime=false;
+  showScreen('shelf');
+  if(typeof switchShelfTab==='function') switchShelfTab('closet');
+  if(typeof showToast==='function') showToast('🎩 Premium ON + hats equipped (tap again to clear)');
 }
 // ▲▲▲ DEV ONLY — REMOVE BEFORE LAUNCH ▲▲▲
 
@@ -10181,6 +11054,7 @@ function switchShelfTab(tab){
   _shelfTab = tab;
   const shelfBtn = document.getElementById('shelf-tab-shelf');
   const pediaBtn = document.getElementById('shelf-tab-pedia');
+  const closetBtn = document.getElementById('shelf-tab-closet');
   if(shelfBtn && pediaBtn){
     shelfBtn.style.background  = tab==='shelf' ? 'white' : 'transparent';
     shelfBtn.style.color       = tab==='shelf' ? '#FF8FAB' : '#AAA';
@@ -10189,8 +11063,13 @@ function switchShelfTab(tab){
     pediaBtn.style.color       = tab==='pedia' ? '#B57BEE' : '#AAA';
     pediaBtn.style.boxShadow   = tab==='pedia' ? '0 1px 4px rgba(0,0,0,0.1)' : 'none';
   }
+  if(closetBtn){
+    closetBtn.style.background = tab==='closet' ? 'white' : 'transparent';
+    closetBtn.style.color      = tab==='closet' ? '#8B5CF6' : '#AAA';
+    closetBtn.style.boxShadow  = tab==='closet' ? '0 1px 4px rgba(0,0,0,0.1)' : 'none';
+  }
   const titleEl = document.getElementById('shelf-title-label');
-  if(titleEl) titleEl.textContent = tab==='pedia' ? 'Squishypedia 📖' : 'Squish Shelf 🧸';
+  if(titleEl) titleEl.textContent = tab==='pedia' ? 'Squishypedia 📖' : tab==='closet' ? 'Closet 👕' : 'Squish Shelf 🧸';
   buildShelf();
 }
 
@@ -10229,6 +11108,7 @@ function buildShelf(){
   const bar = document.getElementById('shelf-progress-bar');
   if(bar) bar.style.width = pct+'%';
   if(_shelfTab === 'pedia') _buildPedia(content);
+  else if(_shelfTab === 'closet') _buildClosetTab(content);
   else _buildShelfView(content);
 }
 
@@ -10286,6 +11166,52 @@ function _buildShelfView(content){
       const ctx=c.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
       ctx.clearRect(0,0,60,60);
       _safeDraw(ctx,sq,30,33,24,Math.random()*100);
+    });
+  });
+}
+
+// ── CLOSET TAB — dress up your squishies ──
+function _buildClosetTab(content){
+  const owned = SQUISHIES.filter(s=>state.collected.includes(s.id));
+  if(!owned.length){
+    content.innerHTML='<div style="text-align:center;padding:40px 20px;color:#AAA"><div style="font-size:40px">👕</div><div style="font-size:15px;font-weight:800;margin-top:10px">No squishies to dress up yet!</div><div style="font-size:13px;margin-top:6px">Collect some squishies first, then come back to style them.</div></div>';
+    return;
+  }
+  const RARITY_ORDER={mythic:0,legendary:1,epic:2,rare:3,uncommon:4,common:5,free:6,pro:7};
+  owned.sort((a,b)=>(RARITY_ORDER[a.rarity]||5)-(RARITY_ORDER[b.rarity]||5));
+  const dressedCount=owned.filter(s=>{const e=(state.equippedOutfits||{})[s.id];return e&&(e.hat||e.held);}).length;
+  const isPrem=!!state.isPremium;
+  const premLine = isPrem
+    ? '<div style="font-size:11px;color:#9079B5;margin-top:1px">✨ Premium unlocked — all outfits available!</div>'
+    : '<div style="font-size:11px;color:#9079B5;margin-top:1px">🎉 Party Hat is free — unlock more with Premium!</div>';
+  let html='<div style="background:#F3EEFF;border-radius:14px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px">'+
+    '<span style="font-size:26px">👕</span>'+
+    '<div style="flex:1"><div style="font-size:13px;font-weight:800;color:#6B46C1">Dress Up Your Squishies</div>'+
+    premLine+'</div>'+
+    (isPrem?'<span style="font-size:18px">👑</span>':'')+'</div>';
+  html+='<div class="family-grid">';
+  owned.forEach(sq=>{
+    const eq=(state.equippedOutfits||{})[sq.id];
+    const dressed=eq&&(eq.hat||eq.held);
+    html+='<div class="squishy-card rarity-'+sq.rarity+'" onclick="openCloset(\''+sq.id+'\')" style="position:relative;cursor:pointer">'+
+      (dressed?'<div style="position:absolute;top:4px;right:4px;background:#8B5CF6;color:white;font-size:11px;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;z-index:2">👕</div>':'')+
+      '<canvas class="card-canvas" id="closet-card-'+sq.id+'" width="60" height="60"></canvas>'+
+      '<div class="card-name">'+squishDisplayName(sq)+'</div>'+
+      '<div style="font-size:9px;color:#8B5CF6;font-weight:700">'+(dressed?'Dressed up!':'Tap to style')+'</div>'+
+      '</div>';
+  });
+  html+='</div>';
+  html+='<div style="height:calc(var(--nav-h) + 40px);flex-shrink:0" aria-hidden="true"></div>';
+  content.innerHTML=html;
+  requestAnimationFrame(()=>{
+    owned.forEach(sq=>{
+      const c=document.getElementById('closet-card-'+sq.id);if(!c)return;
+      const dpr=window.devicePixelRatio||1;
+      c.width=Math.round(60*dpr);c.height=Math.round(60*dpr);
+      c.style.width='60px';c.style.height='60px';
+      const ctx=c.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
+      ctx.clearRect(0,0,60,60);
+      _safeDraw(ctx,sq,30,33,24,40); // shows current outfit
     });
   });
 }
@@ -10564,9 +11490,7 @@ function _refreshShelfIfOpen(){
   try{
     const sh=document.getElementById('screen-shelf');
     if(sh && sh.classList.contains('active')){
-      const content=sh.querySelector('.shelf-content, #shelf-tab-content, .tab-content') || document.getElementById('shelf-content');
-      if(content && _shelfTab==='shelf') _buildShelfView(content);
-      else if(content) _buildShelfView(content);
+      buildShelf(); // rebuilds whichever tab is active (shelf / pedia / closet)
     }
   }catch(e){}
 }
@@ -10577,6 +11501,148 @@ function squishFromInfo(){
   closeSquishInfo();
   if(sq) openSquishPlay(sq,'shelf');
 }
+
+// ── CLOSET / DRESS-UP ──
+let _closetSquishId=null;
+function dressUpFromInfo(){
+  const m=document.getElementById('squish-info-modal');
+  const id=m&&m.dataset?m.dataset.squishId:null;
+  if(!id) return;
+  openCloset(id);
+}
+function openCloset(squishId){
+  _closetSquishId=squishId;
+  const sq=SQUISHIES.find(s=>s.id===squishId);
+  if(!sq) return;
+  if(!state.equippedOutfits) state.equippedOutfits={};
+  document.getElementById('closet-sq-name').textContent='Dress up '+squishDisplayName(sq);
+  _buildClosetGrid();
+  _renderClosetSquishy();
+  document.getElementById('closet-modal').style.display='flex';
+}
+function _closeCloset(){
+  document.getElementById('closet-modal').style.display='none';
+  if(typeof _refreshShelfIfOpen==='function') _refreshShelfIfOpen();
+  // If the squishy info modal is open, re-render it so the new outfit shows.
+  const im=document.getElementById('squish-info-modal');
+  if(im && im.style.display!=='none' && _closetSquishId && typeof openSquishInfo==='function'){
+    openSquishInfo(_closetSquishId);
+  }
+}
+// Draw the squishy live (with its current outfit) in the closet preview.
+function _renderClosetSquishy(){
+  const sq=SQUISHIES.find(s=>s.id===_closetSquishId); if(!sq) return;
+  const c=document.getElementById('closet-canvas'); if(!c) return;
+  const dpr=Math.min(2,window.devicePixelRatio||1);
+  c.width=Math.round(96*dpr); c.height=Math.round(96*dpr);
+  c.style.width='96px'; c.style.height='96px';
+  const ctx=c.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,96,96);
+  // Draw the squishy lower + a touch smaller so even TALL hats (wizard) have
+  // clear headroom above the head and never clip the top of the frame.
+  _safeDraw(ctx, sq, 48, 63, 27, 40); // live draw includes the outfit layer
+}
+// Build the hat grid: each hat tappable; the equipped one is highlighted; a
+// "none" option to remove. Each cell previews the hat on a neutral swatch.
+function _buildClosetGrid(){
+  _buildClosetCategory('hat',  'closet-hats-grid');
+  _buildClosetCategory('held', 'closet-held-grid');
+}
+function _buildClosetCategory(cat, gridId){
+  const grid=document.getElementById(gridId); if(!grid) return;
+  const eq=(state.equippedOutfits[_closetSquishId])||{};
+  const sq=SQUISHIES.find(s=>s.id===_closetSquishId);
+  const items=OUTFIT_CATALOGUE.filter(o=>o.cat===cat);
+  const equippedId = eq[cat]; // eq.hat or eq.held
+  let html='';
+  // "None" option
+  const noneSel=!equippedId;
+  html+=`<div onclick="_toggleOutfit('${cat}',null)" style="cursor:pointer;text-align:center;padding:8px 4px;border-radius:14px;background:${noneSel?'#F0E8FF':'#F8F8F8'};border:2px solid ${noneSel?'#8B5CF6':'transparent'}">
+    <div style="font-size:24px;height:40px;line-height:40px">🚫</div><div style="font-size:9px;font-weight:800;color:#888;margin-top:2px">None</div></div>`;
+  items.forEach(h=>{
+    const sel=equippedId===h.id;
+    const unlocked=_outfitUnlocked(h);
+    const marker = h.free ? '' :
+                   (unlocked ? '<div style="position:absolute;top:3px;right:3px;font-size:10px">👑</div>'
+                             : '<div style="position:absolute;top:3px;right:3px;font-size:10px">🔒</div>');
+    const dim = unlocked ? '' : 'opacity:0.55;';
+    html+=`<div onclick="_toggleOutfit('${cat}','${h.id}')" style="position:relative;cursor:pointer;text-align:center;padding:8px 4px;border-radius:14px;background:${sel?'#F0E8FF':'#F8F8F8'};border:2px solid ${sel?'#8B5CF6':'transparent'};${dim}">
+      ${marker}
+      <canvas id="closet-icon-${h.id}" width="48" height="48" style="width:48px;height:48px"></canvas>
+      <div style="font-size:9px;font-weight:800;color:#555;margin-top:2px">${h.name}</div></div>`;
+  });
+  grid.innerHTML=html;
+  // Render each item's real art into its icon canvas (auto-fit).
+  requestAnimationFrame(()=>{
+    items.forEach(h=>{
+      const c=document.getElementById('closet-icon-'+h.id); if(!c) return;
+      const dpr=Math.min(2,window.devicePixelRatio||1);
+      const CELL=48;
+      c.width=Math.round(CELL*dpr); c.height=Math.round(CELL*dpr);
+      c.style.width=CELL+'px'; c.style.height=CELL+'px';
+      const ctx=c.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+      ctx.clearRect(0,0,CELL,CELL);
+      if(!h.draw) return;
+      try {
+        // Auto-fit: render large on a buffer, measure painted bounds, scale to fill.
+        const BUF=120;
+        const buf=document.createElement('canvas'); buf.width=BUF; buf.height=BUF;
+        const bx=buf.getContext('2d');
+        // Prefer a dedicated icon renderer (centered) when provided — held items
+        // like the balloon frame differently in a small cell than when worn.
+        if(h.iconDraw){
+          h.iconDraw(bx, sq||SQUISHIES[0], 32, 40, BUF/2, BUF/2);
+        } else if(cat==='held'){
+          h.draw(bx, sq||SQUISHIES[0], 26, 40, BUF/2 - 26*0.9, BUF*0.42);
+        } else {
+          h.draw(bx, sq||SQUISHIES[0], 30, 40, BUF/2, BUF*0.62);
+        }
+        const img=bx.getImageData(0,0,BUF,BUF).data;
+        let minX=BUF,minY=BUF,maxX=0,maxY=0,found=false;
+        for(let y=0;y<BUF;y++){ for(let x=0;x<BUF;x++){
+          if(img[(y*BUF+x)*4+3]>10){ found=true; if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y; }
+        }}
+        if(!found){ return; }
+        const bw=maxX-minX, bh=maxY-minY;
+        const pad=6;
+        const scale=Math.min((CELL-pad*2)/bw,(CELL-pad*2)/bh);
+        ctx.save();
+        ctx.translate(CELL/2, CELL/2);
+        ctx.scale(scale,scale);
+        ctx.translate(-(minX+bw/2), -(minY+bh/2));
+        ctx.drawImage(buf,0,0);
+        ctx.restore();
+      } catch(e){}
+    });
+  });
+}
+function _toggleOutfit(slot, id){
+  if(!_closetSquishId) return;
+  // Premium gate
+  if(id){
+    const item=OUTFIT_CATALOGUE.find(o=>o.id===id);
+    if(item && !_outfitUnlocked(item)){ _showClosetUnlock(); return; }
+  }
+  if(!state.equippedOutfits[_closetSquishId]) state.equippedOutfits[_closetSquishId]={};
+  const cur=state.equippedOutfits[_closetSquishId];
+  if(id===null || cur[slot]===id){
+    delete cur[slot]; // tap again or None = remove
+  } else {
+    cur[slot]=id;
+  }
+  for(const k in _spriteCache){ if(k.indexOf(_closetSquishId+'@')===0) delete _spriteCache[k]; }
+  saveState();
+  _buildClosetGrid();
+  _renderClosetSquishy();
+  haptic(HAP.coin);
+}
+// Placeholder unlock pitch — wired to the real premium flow later. For now it
+// just explains the closet is premium (and in dev, premium is already unlocked
+// so this won't normally fire).
+function _showClosetUnlock(){
+  if(typeof showToast==='function') showToast('👑 This outfit is part of Premium! (unlock coming soon)');
+}
+
 // Open the naming modal for the squishy currently shown in the info modal.
 function nameFromInfo(){
   const m=document.getElementById('squish-info-modal');
