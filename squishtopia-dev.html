@@ -6925,7 +6925,7 @@ function _drawFurnitureInRoom(ctx,W,H,t){
       // Ambient fire glow on surrounding stone
       const ambG=ctx.createRadialGradient(px,fy2+fh*0.60,0,px,fy2+fh*0.60,fw*0.55);
       const flicker2=0.3+0.15*Math.sin(t*0.13);
-      ambG.addColorStop(0,`rgba(255,150,20,\${flicker2})`);
+      ambG.addColorStop(0,`rgba(255,150,20,${flicker2})`);
       ambG.addColorStop(0.6,'rgba(255,80,0,0.05)');
       ambG.addColorStop(1,'rgba(0,0,0,0)');
       ctx.fillStyle=ambG;ctx.beginPath();ctx.ellipse(px,fy2+fh*0.60,fw*0.55,fh*0.45,0,0,Math.PI*2);ctx.fill();
@@ -7127,10 +7127,10 @@ function _drawFurnitureInRoom(ctx,W,H,t){
       const css2=ctx.createRadialGradient(px,py+2,2,px,py+2,csw*0.48);
       css2.addColorStop(0,'rgba(0,0,0,0.15)');css2.addColorStop(1,'rgba(0,0,0,0)');
       ctx.fillStyle=css2;ctx.beginPath();ctx.ellipse(px,py+2,csw*0.48,H*0.020,0,0,Math.PI*2);ctx.fill();
-      // Seat — cotton candy pink
-      ctx.fillStyle='#FFB3C6';ctx.beginPath();ctx.roundRect(csx,csy+csh*0.38,csw,csh*0.62,5);ctx.fill();
+      // Seat — mint candy (distinct from the pink sofa)
+      ctx.fillStyle='#A8E6CF';ctx.beginPath();ctx.roundRect(csx,csy+csh*0.38,csw,csh*0.62,5);ctx.fill();
       // Back
-      ctx.fillStyle='#FF8FAB';ctx.beginPath();ctx.roundRect(csx,csy,csw,csh*0.48,5);ctx.fill();
+      ctx.fillStyle='#7DD3AE';ctx.beginPath();ctx.roundRect(csx,csy,csw,csh*0.48,5);ctx.fill();
       // Candy stripe pattern
       ctx.save();ctx.clip();
       for(let i=-2;i<8;i++){
@@ -7139,13 +7139,13 @@ function _drawFurnitureInRoom(ctx,W,H,t){
       }
       ctx.restore();
       // Cushions
-      ctx.fillStyle='#FFC8D6';ctx.beginPath();ctx.roundRect(csx+csw*0.04,csy+csh*0.42,csw*0.44,csh*0.42,4);ctx.fill();
+      ctx.fillStyle='#C2F0DC';ctx.beginPath();ctx.roundRect(csx+csw*0.04,csy+csh*0.42,csw*0.44,csh*0.42,4);ctx.fill();
       ctx.beginPath();ctx.roundRect(csx+csw*0.52,csy+csh*0.42,csw*0.44,csh*0.42,4);ctx.fill();
       // Armrests
-      ctx.fillStyle='#FF6B9D';
+      ctx.fillStyle='#5CC2A0';
       ctx.beginPath();ctx.roundRect(csx,csy+csh*0.22,csw*0.12,csh*0.78,5);ctx.fill();
       ctx.beginPath();ctx.roundRect(csx+csw*0.88,csy+csh*0.22,csw*0.12,csh*0.78,5);ctx.fill();
-      // Candy bow decoration
+      // Candy bow decoration (pink bow pops against the mint)
       ctx.fillStyle='#FF2D8A';ctx.font=`${csh*0.5}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
       ctx.fillText('🎀',px,csy+csh*0.12);
       ctx.restore();
@@ -8953,11 +8953,9 @@ function _buildShopTab(el){
     } else {
       btn=`<button onclick="_buyFurniture('${item.id}')" ${canAfford?'':'disabled'} style="width:100%;background:${canAfford?'#FF9F43':'#E0E0E0'};border:none;border-radius:12px;padding:7px;font-size:11px;font-weight:800;color:${canAfford?'white':'#AAA'};cursor:${canAfford?'pointer':'default'};margin-top:2px">${item.cost+'🪙'}</button>`;
     }
-    const DRAWN_ITEMS=['lamp_basic','table_basic','rug_basic','rug_star','bed_cozy','step_stool','cookie_jar','mixing_bowl','pancake_griddle','juice_blender','tea_set','toaster','fruit_bowl','candy_fountain','magic_oven','cake_station'];
-    const useCanvas=DRAWN_ITEMS.includes(item.id);
-    const iconHtml=useCanvas
-      ? `<canvas id="shop-icon-${item.id}" width="56" height="56" style="width:56px;height:56px"></canvas>`
-      : `<div style="font-size:32px;line-height:1">${item.icon}</div>`;
+    // Every furniture item now renders its REAL art as the icon (via furn-icon-*),
+    // so the menu icon always matches the placed piece. No more emoji mismatches.
+    const iconHtml=`<canvas id="furn-icon-${item.id}" width="52" height="52" style="width:52px;height:52px"></canvas>`;
     const palette=FURNITURE_COLORS[item.id];
     const colorBtn=palette&&isOwned?`<button onclick="_showColorPicker('${item.id}')" style="background:none;border:1.5px solid #E0D0C0;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:700;color:#8b4513;cursor:pointer;margin-top:2px">🎨 Color</button>`:'';
     html+=`<div style="background:white;border-radius:16px;padding:12px 10px;display:flex;flex-direction:column;align-items:center;gap:5px;box-shadow:0 2px 8px rgba(0,0,0,0.07);border:2px solid ${isPlaced||isOwned?rc:'rgba(0,0,0,0.06)'};opacity:${isPlaced?'0.72':'1'}">
@@ -9012,6 +9010,52 @@ function _buildShopTab(el){
   el.innerHTML=html;
 
   // Draw canvas icons for specially-rendered items
+  requestAnimationFrame(()=>{
+    // Render the REAL in-room art for any furniture into its shop icon, by
+    // temporarily placing just that one item centered on a small canvas. This
+    // guarantees the icon always matches what gets placed (no emoji mismatch).
+    ROOM_CATALOGUE.forEach(item=>{
+      const cc=document.getElementById('furn-icon-'+item.id);
+      if(!cc) return;
+      const dpr=window.devicePixelRatio||1;
+      const SZ=52;
+      cc.width=Math.round(SZ*dpr); cc.height=Math.round(SZ*dpr);
+      cc.style.width=SZ+'px'; cc.style.height=SZ+'px';
+      const ictx=cc.getContext('2d'); ictx.setTransform(dpr,0,0,dpr,0,0);
+      ictx.clearRect(0,0,SZ,SZ);
+      try {
+        // Render the item's real art on a buffer sized like a room, measure its
+        // painted bounds, then scale+center into the icon cell (same auto-fit
+        // trick the closet uses). Guarantees a perfect match, properly framed.
+        const BUF=240;
+        const buf=document.createElement('canvas'); buf.width=BUF; buf.height=BUF;
+        const bctx=buf.getContext('2d');
+        const savedPlaced=state.placedFurniture;
+        // Place centered; y so the item's baseline sits mid-buffer.
+        state.placedFurniture=[{id:item.id, x:0.5, y:0.6}];
+        _drawFurnitureInRoom(bctx, BUF, BUF, 0);
+        state.placedFurniture=savedPlaced;
+        // measure painted bounds
+        const img=bctx.getImageData(0,0,BUF,BUF).data;
+        let minX=BUF,minY=BUF,maxX=0,maxY=0,found=false;
+        for(let y=0;y<BUF;y++){ for(let x=0;x<BUF;x++){
+          if(img[(y*BUF+x)*4+3]>12){ found=true; if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y; }
+        }}
+        if(!found) return;
+        const bw=maxX-minX, bh=maxY-minY, pad=5;
+        const scale=Math.min((SZ-pad*2)/bw,(SZ-pad*2)/bh);
+        ictx.save();
+        ictx.translate(SZ/2,SZ/2);
+        ictx.scale(scale,scale);
+        ictx.translate(-(minX+bw/2),-(minY+bh/2));
+        ictx.drawImage(buf,0,0);
+        ictx.restore();
+      } catch(e){}
+    });
+  });
+
+  // Legacy hand-drawn shop icons (kitchen + a few items) — kept for any that
+  // still reference shop-icon-*; the new furn-icon-* path above covers the rest.
   requestAnimationFrame(()=>{
     ROOM_CATALOGUE.forEach(item=>{
       const c=document.getElementById('shop-icon-'+item.id);
@@ -9352,7 +9396,7 @@ function _showTradeDupes(){
     const RARITY_COLORS={mythic:'#4527A0',legendary:'#F57F17',epic:'#006064',rare:'#1565C0',uncommon:'#2E7D32',common:'#888'};
     const rc=RARITY_COLORS[sq.rarity]||'#888';
     return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.06)">
-      <span style="font-size:24px">${sq.icon}</span>
+      <canvas id="tradedupe-${sq.id}" width="36" height="36" style="width:36px;height:36px;flex-shrink:0"></canvas>
       <div style="flex:1">
         <div style="font-size:12px;font-weight:800;color:#2D1B00">${sq.name}</div>
         <div style="font-size:10px;color:${rc};font-weight:700">${sq.rarity.toUpperCase()} · ${extras} extra${extras>1?'s':''}</div>
@@ -9378,6 +9422,18 @@ function _showTradeDupes(){
   </div>`;
 
   document.body.appendChild(overlay);
+  // Draw the REAL squishy art into each row (matches the park, not a generic emoji).
+  requestAnimationFrame(()=>{
+    dupes.forEach(sq=>{
+      const c=document.getElementById('tradedupe-'+sq.id);
+      if(!c) return;
+      const dpr=window.devicePixelRatio||1;
+      c.width=Math.round(36*dpr); c.height=Math.round(36*dpr);
+      const ctx=c.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+      ctx.clearRect(0,0,36,36);
+      try { _safeDraw(ctx,sq,18,19,14,50); } catch(e){}
+    });
+  });
   overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
 }
 
@@ -12757,9 +12813,11 @@ function _confirmProPurchase(){
   closeProModal();
   _triggerLevelUp({lvl:'✨', title:'Bonus Pack Unlocked!'});
   setTimeout(()=>showToast('🎁 +300🪙 · All bonus furniture unlocked!'),600);
-  // Rebuild shop to reflect new state
+  // Rebuild shop to reflect new state (items now owned → show "Place", not "Bonus").
+  // Refresh whichever home tab content is showing, robustly (the old check relied
+  // on a brittle inline-style string match that could silently skip the refresh).
   const content = document.getElementById('home-tab-content');
-  if(content){ const tab=document.getElementById('home-tab-shop'); if(tab&&tab.style.borderBottom&&tab.style.borderBottom.includes('8b4513')) _buildShopTab(content); }
+  if(content && typeof _buildShopTab==='function'){ try { _buildShopTab(content); } catch(e){} }
 }
 
 let _baoIdx=0;
