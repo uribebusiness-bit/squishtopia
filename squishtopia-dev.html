@@ -8372,6 +8372,43 @@ function _tickResAI(ai, id, W, H, t){
   if(ai.state === RES_STATES.EAT) ai.eatTimer = (ai.eatTimer||0)+1;
   if(ai.state === RES_STATES.PLAY) ai.playAngle = (ai.playAngle||0)+0.12;
 
+  // ── LIVING-ROOM REACTIONS (lightweight, additive) ──────────────────────────
+  // The kitchen has rich furniture interaction; this gives the living room some
+  // life too. When a roaming squishy passes near a living-room piece, it
+  // occasionally shows a contextual thought bubble — cozy by the sofa, warm by
+  // the fireplace, playful by the arcade, sleepy by the bed, etc. This does NOT
+  // touch the EAT state machine; it's a passing, ambient reaction.
+  // GUARDED to the living room only, so a kitchen squishy can never react to a
+  // living-room piece (and vice-versa) when switching rooms.
+  if(state.currentRoom!=='kitchen' && ai.state!==RES_STATES.EAT && (ai.bubbleTimer||0)<=0 && Math.random()<0.04){
+    const _lf = Array.isArray(state.placedFurniture)?state.placedFurniture:[];
+    // contextual bubble per living-room item
+    const LR_REACT = {
+      sofa_pink:   ['heart','zzz'],
+      candy_sofa:  ['heart','candy'],
+      starbed:     ['zzz','star'],
+      arcade_cab:  ['exclaim','star'],
+      fireplace:   ['heart','star'],
+      lamp_basic:  ['note','heart'],
+      aquarium:    ['heart','star'],
+      bookshelf:   ['note','heart'],
+      trophy_wall: ['star','exclaim'],
+      pirate_chest:['star','exclaim']
+    };
+    // find the nearest reactive living-room piece this squishy is close to
+    let near=null, bestD=0.012; // proximity threshold (squared, normalized)
+    for(const p of _lf){
+      if(!LR_REACT[p.id]) continue;
+      const dx=ai.x-p.x, dy=ai.y-p.y, d=dx*dx+dy*dy;
+      if(d<bestD){ bestD=d; near=p; }
+    }
+    if(near){
+      const opts=LR_REACT[near.id];
+      ai.bubble=opts[Math.floor(Math.random()*opts.length)];
+      ai.bubbleTimer=50;
+    }
+  }
+
   // If this resident is baking at the mixing bowl (in EAT state, having chosen
   // it as the target, and arrived near the bowl — whether standing on a stool
   // or hopping below it), light up the bowl's active baking animation.
