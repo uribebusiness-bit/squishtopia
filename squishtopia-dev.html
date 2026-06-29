@@ -519,16 +519,6 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
         <div style="display:flex;flex-direction:column;gap:8px" id="converter-options"></div>
       </div>
     </div>
-
-    <!-- Friend code (kept but honest about what it is) -->
-    <div class="trade-section">
-      <div class="trade-box">
-        <div class="trade-box-title">🪪 Your Collector ID</div>
-        <div style="font-size:12px;color:#888;margin-bottom:8px">Share this code with friends to show off your collection.</div>
-        <div class="friend-code-display" id="my-code">SQSH-7749</div>
-        <button class="copy-code-btn" onclick="copyCode()">📋 Copy Code</button>
-      </div>
-    </div>
   </div>
   <div id="bottom-nav-trade" style="position:absolute;bottom:0;left:0;right:0;height:var(--nav-h);background:#FFFDF8;border-top:2px solid rgba(255,255,255,0.9);display:flex;align-items:center;justify-content:space-around;padding:0 8px 12px;z-index:100;box-shadow:0 -4px 20px rgba(0,0,0,0.1)">
     <button class="nav-btn" onclick="showScreen('park')"><span class="nav-icon">🌳</span><span class="nav-label">Park</span></button>
@@ -1118,7 +1108,6 @@ const BADGES = [
   {id:'streak7',  name:'Week Warrior', icon:'⚡', desc:'7-day streak'},
   {id:'daily30',  name:'Dedicated',    icon:'📅', desc:'30-day login'},
   {id:'trader',   name:'Trader',       icon:'🤝', desc:'Complete a trade'},
-  {id:'social',   name:'Social Squish',icon:'👥', desc:'Share your Collector ID'},
   {id:'explorer', name:'Explorer',     icon:'🗺️', desc:'Explore the whole park'},
   {id:'speed',    name:'Speed Squisher',icon:'⏱️',desc:'Collect 10 squishies'},
   {id:'family',   name:'Family First', icon:'🏠', desc:'Complete a full family'},
@@ -4851,7 +4840,7 @@ function drawMiniMap(ctx,W,H){
   Object.keys(exploredCells).forEach(k=>{const[cx,cy]=k.split(',').map(Number);mc.beginPath();mc.arc((cx+0.5)*FOG_GRID*sx,(cy+0.5)*FOG_GRID*sy,FOG_GRID*sx*1.2,0,Math.PI*2);mc.fill();});
   mc.globalAlpha=1;
   // Zone markers — small emoji dots for explored zones
-  const ZONE_ICONS={meadow:'🌾',acorn:'🌰',crystal:'💎',rainbow:'🌈',mushroom:'🍄',picnic:'🧺',playground:'⛲',cave:'🦇',candy:'🍬'};
+  const ZONE_ICONS={meadow:'🌾',acorn:'🌰',crystal:'💎',rainbow:'🌈',mushroom:'🍄',picnic:'🧺',playground:'⛲',cave:'🕳️',candy:'🍬'};
   mc.font='7px serif';mc.textAlign='center';mc.textBaseline='middle';
   ZONES.forEach(z=>{
     const zx=z.wx*mw, zy=z.wy*mh;
@@ -5838,7 +5827,7 @@ const FURNITURE_CATALOGUE = [
   {id:'starbed',     name:'Galaxy Bed',     icon:'🌌', cost:0,   rarity:'bonus',    theme:'Space',  slot:'left',      desc:'Sleep among the stars',   bonus:true},
   {id:'candy_sofa',  name:'Candy Couch',    icon:'🍭', cost:0,   rarity:'bonus',    theme:'Candy',  slot:'left',      desc:'Gummy cushions, candy-striped',       bonus:true},
   {id:'trophy_wall', name:'Trophy Wall',    icon:'🏆', cost:0,   rarity:'bonus',    theme:'Forest', slot:'wall',      desc:'Show off your rarest',    bonus:true},
-  {id:'pirate_chest',name:'Pirate Chest',   icon:'🧰', cost:0,   rarity:'bonus',    theme:'Pirate', slot:'corner',    desc:'Full of treasure',        bonus:true},
+  {id:'pirate_chest',name:'Pirate Chest',   icon:'💰', cost:0,   rarity:'bonus',    theme:'Pirate', slot:'corner',    desc:'Full of treasure',        bonus:true},
 
   // ═══ KITCHEN ITEMS (room:'kitchen') ═══
   // Ordered for the shop: free starters, then commons by price, then rare last.
@@ -11943,7 +11932,6 @@ function buildEvents(){
 
 // ===== TRADE =====
 function buildTrade(){
-  document.getElementById('my-code').textContent=state.friendCode;
 
   const COIN_VALUE={common:1,uncommon:2,rare:4,epic:9,legendary:20,mythic:50};
   const dupes=SQUISHIES.filter(s=>state.collected.includes(s.id)&&(state.counts[s.id]||0)>1);
@@ -12167,10 +12155,7 @@ function _mysteryReveal(winner){
 }
 
 function copyCode(){
-  navigator.clipboard.writeText(state.friendCode).catch(()=>{});
-  showToast('📋 Code copied!');
-  // Sharing your Collector ID earns the Social badge (no multiplayer implied).
-  if(!state.badges.has('social')){ state.badges.add('social'); saveState(); checkAchievements(); }
+  // Collector ID feature removed — no-op kept for safety against stale references.
 }
 
 
@@ -12184,7 +12169,7 @@ function buildProfile(){
   const _pct=_total>0?Math.round((state.collected.length/_total)*100):0;
   const _compEl=document.getElementById('stat-completion'); if(_compEl)_compEl.textContent=_pct+'%';
   // Badges earned (out of all available)
-  const _badgeEl=document.getElementById('stat-badges'); if(_badgeEl)_badgeEl.textContent=(state.badges?state.badges.size:0)+'/'+BADGES.length;
+  const _badgeEl=document.getElementById('stat-badges'); if(_badgeEl){ const _valid=state.badges?[...state.badges].filter(b=>BADGES.some(x=>x.id===b)).length:0; _badgeEl.textContent=_valid+'/'+BADGES.length; }
   // Bonds maxed (friendship Lv 10 = 28 squeezes) among collected squishies
   const _bonds=Object.entries(state.friendship||{}).filter(([id,sq])=>state.collected.includes(id)&&sq>=27).length;
   const _bondEl=document.getElementById('stat-bonds'); if(_bondEl)_bondEl.textContent=_bonds;
