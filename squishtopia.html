@@ -491,7 +491,7 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
 <!-- TRADE SCREEN -->
 <div id="screen-trade" class="screen">
   <div class="trade-header"><div class="trade-title">Convert 🔁</div></div>
-  <div style="flex:1;overflow-y:auto;padding-bottom:calc(var(--nav-h)+80px)">
+  <div style="flex:1;overflow-y:auto;padding-bottom:calc(var(--nav-h)+140px)">
 
     <!-- Lucky Roll: coin sink -->
     <div class="trade-section">
@@ -2712,7 +2712,7 @@ let joyVX=0,joyVY=0,joySprinting=false;
 // held sprint button (and vice-versa). joySprinting is their OR.
 let _sprintKey=false,_sprintBtn=false;
 function _updateSprint(){ joySprinting = _sprintKey || _sprintBtn; }
-const sqBaseSpeed=4.2,sqSprintSpeed=4.2;
+const sqBaseSpeed=5.5,sqSprintSpeed=5.5;
 let pods=[],parkT=0;
 let exploredCells={},exploredPct=0;
 let podOpenCooldown=0,_collectingPod=null;
@@ -6150,7 +6150,7 @@ function _buildShopTab(el){
     } else {
       btn=`<button onclick="_buyFurniture('${item.id}')" ${canAfford?'':'disabled'} style="width:100%;background:${canAfford?'#FF9F43':'#E0E0E0'};border:none;border-radius:12px;padding:7px;font-size:11px;font-weight:800;color:${canAfford?'white':'#AAA'};cursor:${canAfford?'pointer':'default'};margin-top:2px">${item.cost+'🪙'}</button>`;
     }
-    const DRAWN_ITEMS=['lamp_basic','table_basic','rug_basic','rug_star','bed_cozy'];
+    const DRAWN_ITEMS=['lamp_basic','table_basic','rug_basic','rug_star','bed_cozy','sofa_pink'];
     const useCanvas=DRAWN_ITEMS.includes(item.id);
     const iconHtml=useCanvas
       ? `<canvas id="shop-icon-${item.id}" width="56" height="56" style="width:56px;height:56px"></canvas>`
@@ -6256,6 +6256,40 @@ function _buildShopTab(el){
         ctx.beginPath();ctx.roundRect(bx+bw*0.12,by+bh*0.18,bw*0.32,bh*0.28,3);ctx.fill();
         ctx.fillStyle=col.frame||'#C07040';
         ctx.beginPath();ctx.roundRect(bx+bw*0.05,by,bw*0.90,bh*0.18,3);ctx.fill();
+      } else if(item.id==='sofa_pink'){
+        // Pink sofa thumbnail: backrest, two seat cushions, arms, little feet.
+        // Colour follows the furniture colour picker if set, else pink.
+        const colorKey=(state.furnitureColors||{})['sofa_pink']||'pink';
+        const pal=FURNITURE_COLORS['sofa_pink'];
+        const col=(pal&&pal.options.find(o=>o.id===colorKey))||(pal&&pal.options[0])||{};
+        const body=col.body||'#FF7BAC';
+        const cushion=col.cushion||'#FF9EC4';
+        const trim=col.trim||'#E85A94';
+        const sx=6, sw=44, cy=40; // baseline
+        // soft shadow
+        ctx.fillStyle='rgba(0,0,0,0.10)';
+        ctx.beginPath();ctx.ellipse(28,cy+8,20,4,0,0,Math.PI*2);ctx.fill();
+        // backrest
+        ctx.fillStyle=body;
+        ctx.beginPath();ctx.roundRect(sx,16,sw,16,6);ctx.fill();
+        // left & right arms
+        ctx.beginPath();ctx.roundRect(sx,24,10,15,5);ctx.fill();
+        ctx.beginPath();ctx.roundRect(sx+sw-10,24,10,15,5);ctx.fill();
+        // seat base
+        ctx.beginPath();ctx.roundRect(sx+7,30,sw-14,10,4);ctx.fill();
+        // two seat cushions
+        ctx.fillStyle=cushion;
+        ctx.beginPath();ctx.roundRect(sx+9,26,13,10,4);ctx.fill();
+        ctx.beginPath();ctx.roundRect(sx+22,26,13,10,4);ctx.fill();
+        // backrest cushion highlight
+        ctx.beginPath();ctx.roundRect(sx+9,18,sw-18,10,5);ctx.fill();
+        // trim seam down the middle
+        ctx.strokeStyle=trim;ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.moveTo(28,27);ctx.lineTo(28,35);ctx.stroke();
+        // little feet
+        ctx.fillStyle=trim;
+        ctx.beginPath();ctx.roundRect(sx+8,39,4,3,1);ctx.fill();
+        ctx.beginPath();ctx.roundRect(sx+sw-12,39,4,3,1);ctx.fill();
       }
     });
   });
