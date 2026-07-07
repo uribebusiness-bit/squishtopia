@@ -278,7 +278,7 @@ html,body{width:100%;height:100%;min-height:100dvh;overflow:hidden;background:#2
 
 /* ===== PARENT SETTINGS MODAL ===== */
 #squish-info-modal.show{display:flex}
-#parent-modal{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:300;display:none;align-items:center;justify-content:center}
+#parent-modal{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:650;display:none;align-items:center;justify-content:center}
 #parent-modal.show{display:flex}
 .modal-box{background:white;border-radius:var(--radius-xl);padding:32px 28px;width:320px;max-width:90vw}
 .modal-title{font-size:22px;font-weight:900;color:var(--darktext);margin-bottom:6px;text-align:center}
@@ -491,7 +491,7 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
 <!-- TRADE SCREEN -->
 <div id="screen-trade" class="screen">
   <div class="trade-header"><div class="trade-title">Convert 🔁</div></div>
-  <div style="flex:1;overflow-y:auto;padding-bottom:calc(var(--nav-h)+140px)">
+  <div style="flex:1;overflow-y:auto;padding-bottom:calc(var(--nav-h)+20px)">
 
     <!-- Lucky Roll: coin sink -->
     <div class="trade-section">
@@ -537,6 +537,7 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
       </div>
     </div>
 
+    <div style="height:calc(var(--nav-h) + 60px);flex:none"></div>
   </div>
   <div id="bottom-nav-trade" style="position:absolute;bottom:0;left:0;right:0;height:var(--nav-h);background:#FFFDF8;border-top:2px solid rgba(255,255,255,0.9);display:flex;align-items:center;justify-content:space-around;padding:0 8px 12px;z-index:100;box-shadow:0 -4px 20px rgba(0,0,0,0.1)">
     <button class="nav-btn" onclick="showScreen('park')"><span class="nav-icon">🌳</span><span class="nav-label">Park</span></button>
@@ -578,7 +579,7 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
     <div class="settings-section" style="padding-bottom:calc(var(--nav-h) + 48px)">
       <div class="section-title" style="margin-bottom:10px">⚙️ Settings</div>
       <button class="settings-btn" onclick="openParentSettings()"><span class="btn-icon">👪</span>Parent Settings<span class="btn-arrow">›</span></button>
-      <button class="settings-btn" onclick="(function(){var w=window.open('squishtopia-privacy.html','_blank');if(!w){window.location.href='squishtopia-privacy.html';}})()"><span class="btn-icon">🔒</span>Privacy Policy<span class="btn-arrow">›</span></button>
+      <button class="settings-btn" onclick="(function(){var w=window.open('https://uribebusiness-bit.github.io/squishtopia/squishtopia-privacy.html','_blank');if(!w){window.location.href='https://uribebusiness-bit.github.io/squishtopia/squishtopia-privacy.html';}})()"><span class="btn-icon">🔒</span>Privacy Policy<span class="btn-arrow">›</span></button>
       <button class="settings-btn" onclick="resetGame()"><span class="btn-icon">🔄</span>Reset Progress<span class="btn-arrow">›</span></button>
     </div>
   </div>
@@ -670,8 +671,9 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
   <div class="modal-box">
     <div id="pin-view">
       <div class="modal-title">🔒 Parent Access</div>
-      <div class="modal-sub">Enter your 4-digit PIN</div>
-      <div class="pin-dots"><div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div><div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div></div>
+      <div class="modal-sub">Ask a grown-up to continue</div>
+      <div id="pin-question" style="font-size:22px;font-weight:900;color:#2D1B00;margin:6px 0 2px">&nbsp;</div>
+      <div id="pin-typed" style="font-size:20px;font-weight:900;color:#FF9F43;min-height:26px;letter-spacing:3px;margin-bottom:18px">&nbsp;</div>
       <div class="pin-keypad">
         <button class="pin-key" onclick="pinPress('1')">1</button><button class="pin-key" onclick="pinPress('2')">2</button><button class="pin-key" onclick="pinPress('3')">3</button>
         <button class="pin-key" onclick="pinPress('4')">4</button><button class="pin-key" onclick="pinPress('5')">5</button><button class="pin-key" onclick="pinPress('6')">6</button>
@@ -6364,7 +6366,7 @@ function _showTradeDupes(){
     const RARITY_COLORS={mythic:'#4527A0',legendary:'#F57F17',epic:'#006064',rare:'#1565C0',uncommon:'#2E7D32',common:'#888'};
     const rc=RARITY_COLORS[sq.rarity]||'#888';
     return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.06)">
-      <span style="font-size:24px">${sq.icon}</span>
+      <canvas class="dupe-row-canvas" data-sqid="${sq.id}" width="34" height="34" style="width:34px;height:34px;flex:none"></canvas>
       <div style="flex:1">
         <div style="font-size:12px;font-weight:800;color:#2D1B00">${sq.name}</div>
         <div style="font-size:10px;color:${rc};font-weight:700">${sq.rarity.toUpperCase()} · ${extras} extra${extras>1?'s':''}</div>
@@ -6390,6 +6392,18 @@ function _showTradeDupes(){
   </div>`;
 
   document.body.appendChild(overlay);
+  requestAnimationFrame(()=>{
+    overlay.querySelectorAll('.dupe-row-canvas').forEach(c=>{
+      const sq=SQUISHIES.find(x=>x.id===c.dataset.sqid);
+      if(!sq) return;
+      const ctx=c.getContext('2d');
+      const dpr=window.devicePixelRatio||1;
+      c.width=34*dpr; c.height=34*dpr;
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+      ctx.clearRect(0,0,34,34);
+      if(typeof _safeDraw==='function') _safeDraw(ctx,sq,17,18,13,50);
+    });
+  });
   overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
 }
 
@@ -8870,7 +8884,7 @@ document.addEventListener('visibilitychange',()=>{
 // on mobile, where visibilitychange isn't always guaranteed to fire).
 window.addEventListener('pagehide',()=>{ if(_ac && _ac.state==='running'){ try{ _ac.suspend(); }catch(e){} } });
 function openParentSettings(){
-  pinBuffer='';updatePinDots();
+  pinBuffer='';_newParentQuestion();
   document.getElementById('pin-view').style.display='';
   document.getElementById('parent-panel').className='parent-settings-panel';
   document.getElementById('parent-modal').className='show';
@@ -8898,25 +8912,42 @@ function closeParent(){
   document.getElementById('parent-modal').className='';
   pinBuffer='';
 }
+// ---- Parent gate: simple math question only an adult solves quickly (no PIN to set/forget) ----
+let _gateAnswer=0;
+function _newParentQuestion(){
+  // multiplication in the adult-easy / kid-hard range; 2-digit answers
+  const a=3+Math.floor(Math.random()*7);   // 3..9
+  const b=3+Math.floor(Math.random()*7);   // 3..9
+  _gateAnswer=a*b;
+  pinBuffer='';
+  const q=document.getElementById('pin-question');
+  const t=document.getElementById('pin-typed');
+  if(q) q.textContent=`What is ${a} \u00d7 ${b}?`;
+  if(t) t.innerHTML='&nbsp;';
+}
 function pinPress(k){
   if(k==='C'){closeParent();return;}
-  if(k==='X'){pinBuffer=pinBuffer.slice(0,-1);updatePinDots();return;}
-  if(pinBuffer.length>=4) return;
-  pinBuffer+=k;updatePinDots();
-  if(pinBuffer.length===4){
-    if(pinBuffer===(state.parentPin||'0000')){
+  if(k==='X'){pinBuffer=pinBuffer.slice(0,-1);_updateGateTyped();return;}
+  if(pinBuffer.length>=3) return;           // answers are 2 digits max, allow a little room
+  pinBuffer+=k;_updateGateTyped();
+  // auto-check once the typed number could match the answer's length
+  if(pinBuffer.length>=String(_gateAnswer).length){
+    if(parseInt(pinBuffer,10)===_gateAnswer){
       document.getElementById('pin-view').style.display='none';
       document.getElementById('parent-panel').className='parent-settings-panel show';
     } else {
-      pinBuffer='';updatePinDots();
-      document.getElementById('parent-modal').style.animation='shake 0.3s';
-      setTimeout(()=>document.getElementById('parent-modal').style.animation='',400);
-      showToast('❌ Wrong PIN');
+      pinBuffer='';_updateGateTyped();
+      const m=document.getElementById('parent-modal');
+      m.style.animation='shake 0.3s';
+      setTimeout(()=>m.style.animation='',400);
+      showToast('Not quite \u2014 try again');
+      _newParentQuestion();
     }
   }
 }
-function updatePinDots(){
-  for(let i=0;i<4;i++) document.getElementById(`pd${i}`).className='pin-dot'+(i<pinBuffer.length?' filled':'');
+function _updateGateTyped(){
+  const t=document.getElementById('pin-typed');
+  if(t) t.innerHTML = pinBuffer ? pinBuffer : '&nbsp;';
 }
 
 
