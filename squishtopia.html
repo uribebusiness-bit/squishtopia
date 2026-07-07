@@ -4397,11 +4397,11 @@ const FURNITURE_CATALOGUE = [
   {id:'sofa_pink',   name:'Pink Sofa',      icon:'🛋', cost:160, rarity:'rare',   theme:'Candy',  slot:'left',      desc:'Perfectly squishy cushions'},
   // Pro-only items
   {id:'radio',       name:'Boom Box',       icon:'📻', cost:120, rarity:'rare',  theme:'Music',   slot:'table_top', desc:'Turn it on — everyone dances!'},
-  {id:'arcade_cab',  name:'Arcade Cabinet', icon:'🕹', cost:0,   rarity:'pro',    theme:'Arcade', slot:'wall',      desc:'Plays Freeze Time!', pro:true},
-  {id:'starbed',     name:'Galaxy Bed',     icon:'🌌', cost:0,   rarity:'pro',    theme:'Space',  slot:'left',      desc:'Sleep among the stars',   pro:true},
-  {id:'candy_sofa',  name:'Candy Couch',    icon:'🍭', cost:0,   rarity:'pro',    theme:'Candy',  slot:'left',      desc:'Gummy cushions, candy-striped',       pro:true},
-  {id:'trophy_wall', name:'Trophy Wall',    icon:'🏆', cost:0,   rarity:'pro',    theme:'Forest', slot:'wall',      desc:'Show off your rarest',    pro:true},
-  {id:'pirate_chest',name:'Pirate Chest',   icon:'💰', cost:0,   rarity:'pro',    theme:'Pirate', slot:'corner',    desc:'Full of treasure',        pro:true},
+  {id:'arcade_cab',  name:'Arcade Cabinet', icon:'🕹', cost:250,   rarity:'pro',    theme:'Arcade', slot:'wall',      desc:'Plays Freeze Time!', pro:true},
+  {id:'starbed',     name:'Galaxy Bed',     icon:'🌌', cost:220,   rarity:'pro',    theme:'Space',  slot:'left',      desc:'Sleep among the stars',   pro:true},
+  {id:'candy_sofa',  name:'Candy Couch',    icon:'🍭', cost:160,   rarity:'pro',    theme:'Candy',  slot:'left',      desc:'Gummy cushions, candy-striped',       pro:true},
+  {id:'trophy_wall', name:'Trophy Wall',    icon:'🏆', cost:180,   rarity:'pro',    theme:'Forest', slot:'wall',      desc:'Show off your rarest',    pro:true},
+  {id:'pirate_chest',name:'Pirate Chest',   icon:'💰', cost:200,   rarity:'pro',    theme:'Pirate', slot:'corner',    desc:'Full of treasure',        pro:true},
 ];
 
 // ── HOME ROOM RENDERER ──
@@ -5649,9 +5649,9 @@ function _drawFurnitureInRoom(ctx,W,H,t){
       css2.addColorStop(0,'rgba(0,0,0,0.15)');css2.addColorStop(1,'rgba(0,0,0,0)');
       ctx.fillStyle=css2;ctx.beginPath();ctx.ellipse(px,py+2,csw*0.48,H*0.020,0,0,Math.PI*2);ctx.fill();
       // Seat — cotton candy pink
-      ctx.fillStyle='#FFB3C6';ctx.beginPath();ctx.roundRect(csx,csy+csh*0.38,csw,csh*0.62,5);ctx.fill();
+      ctx.fillStyle='#A8E6CF';ctx.beginPath();ctx.roundRect(csx,csy+csh*0.38,csw,csh*0.62,5);ctx.fill();
       // Back
-      ctx.fillStyle='#FF8FAB';ctx.beginPath();ctx.roundRect(csx,csy,csw,csh*0.48,5);ctx.fill();
+      ctx.fillStyle='#7DD3AE';ctx.beginPath();ctx.roundRect(csx,csy,csw,csh*0.48,5);ctx.fill();
       // Candy stripe pattern
       ctx.save();ctx.clip();
       for(let i=-2;i<8;i++){
@@ -5660,13 +5660,13 @@ function _drawFurnitureInRoom(ctx,W,H,t){
       }
       ctx.restore();
       // Cushions
-      ctx.fillStyle='#FFC8D6';ctx.beginPath();ctx.roundRect(csx+csw*0.04,csy+csh*0.42,csw*0.44,csh*0.42,4);ctx.fill();
+      ctx.fillStyle='#C2F0DC';ctx.beginPath();ctx.roundRect(csx+csw*0.04,csy+csh*0.42,csw*0.44,csh*0.42,4);ctx.fill();
       ctx.beginPath();ctx.roundRect(csx+csw*0.52,csy+csh*0.42,csw*0.44,csh*0.42,4);ctx.fill();
       // Armrests
-      ctx.fillStyle='#FF6B9D';
+      ctx.fillStyle='#5CC2A0';
       ctx.beginPath();ctx.roundRect(csx,csy+csh*0.22,csw*0.12,csh*0.78,5);ctx.fill();
       ctx.beginPath();ctx.roundRect(csx+csw*0.88,csy+csh*0.22,csw*0.12,csh*0.78,5);ctx.fill();
-      // Candy bow decoration
+      // Candy bow decoration (pink bow pops against the mint)
       ctx.fillStyle='#FF2D8A';ctx.font=`${csh*0.5}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
       ctx.fillText('🎀',px,csy+csh*0.12);
       ctx.restore();
@@ -6152,7 +6152,7 @@ function _buildShopTab(el){
     } else {
       btn=`<button onclick="_buyFurniture('${item.id}')" ${canAfford?'':'disabled'} style="width:100%;background:${canAfford?'#FF9F43':'#E0E0E0'};border:none;border-radius:12px;padding:7px;font-size:11px;font-weight:800;color:${canAfford?'white':'#AAA'};cursor:${canAfford?'pointer':'default'};margin-top:2px">${item.cost+'🪙'}</button>`;
     }
-    const DRAWN_ITEMS=['lamp_basic','table_basic','rug_basic','rug_star','bed_cozy','sofa_pink'];
+    const DRAWN_ITEMS=['lamp_basic','table_basic','rug_basic','rug_star','bed_cozy','sofa_pink','candy_sofa'];
     const useCanvas=DRAWN_ITEMS.includes(item.id);
     const iconHtml=useCanvas
       ? `<canvas id="shop-icon-${item.id}" width="56" height="56" style="width:56px;height:56px"></canvas>`
@@ -6290,6 +6290,42 @@ function _buildShopTab(el){
         ctx.beginPath();ctx.moveTo(28,27);ctx.lineTo(28,35);ctx.stroke();
         // little feet
         ctx.fillStyle=trim;
+        ctx.beginPath();ctx.roundRect(sx+8,39,4,3,1);ctx.fill();
+        ctx.beginPath();ctx.roundRect(sx+sw-12,39,4,3,1);ctx.fill();
+      } else if(item.id==='candy_sofa'){
+        // Mint candy couch thumbnail (distinct from the pink sofa) with a pink bow.
+        const sx=6, sw=44, cy=40;
+        ctx.fillStyle='rgba(0,0,0,0.10)';
+        ctx.beginPath();ctx.ellipse(28,cy+8,20,4,0,0,Math.PI*2);ctx.fill();
+        // backrest (mint)
+        ctx.fillStyle='#7DD3AE';
+        ctx.beginPath();ctx.roundRect(sx,16,sw,16,6);ctx.fill();
+        // arms (deeper mint)
+        ctx.fillStyle='#5CC2A0';
+        ctx.beginPath();ctx.roundRect(sx,24,10,15,5);ctx.fill();
+        ctx.beginPath();ctx.roundRect(sx+sw-10,24,10,15,5);ctx.fill();
+        // seat base (mint)
+        ctx.fillStyle='#A8E6CF';
+        ctx.beginPath();ctx.roundRect(sx+7,30,sw-14,10,4);ctx.fill();
+        // cushions (light mint)
+        ctx.fillStyle='#C2F0DC';
+        ctx.beginPath();ctx.roundRect(sx+9,26,13,10,4);ctx.fill();
+        ctx.beginPath();ctx.roundRect(sx+22,26,13,10,4);ctx.fill();
+        // backrest cushion highlight
+        ctx.beginPath();ctx.roundRect(sx+9,18,sw-18,10,5);ctx.fill();
+        // candy stripes on backrest (subtle white)
+        ctx.save();
+        ctx.beginPath();ctx.roundRect(sx,16,sw,16,6);ctx.clip();
+        ctx.fillStyle='rgba(255,255,255,0.22)';
+        for(let i=0;i<6;i++){ ctx.beginPath();ctx.moveTo(sx+i*10,16);ctx.lineTo(sx+i*10+4,16);ctx.lineTo(sx+i*10-2,32);ctx.lineTo(sx+i*10-6,32);ctx.closePath();ctx.fill(); }
+        ctx.restore();
+        // pink bow (pops against mint)
+        ctx.fillStyle='#FF2D8A';
+        ctx.beginPath();ctx.moveTo(28,15);ctx.lineTo(23,11);ctx.lineTo(23,19);ctx.closePath();ctx.fill();
+        ctx.beginPath();ctx.moveTo(28,15);ctx.lineTo(33,11);ctx.lineTo(33,19);ctx.closePath();ctx.fill();
+        ctx.beginPath();ctx.arc(28,15,2.5,0,Math.PI*2);ctx.fill();
+        // little feet
+        ctx.fillStyle='#5CC2A0';
         ctx.beginPath();ctx.roundRect(sx+8,39,4,3,1);ctx.fill();
         ctx.beginPath();ctx.roundRect(sx+sw-12,39,4,3,1);ctx.fill();
       }
@@ -6480,15 +6516,15 @@ function _buyFurniture(id){
   _checkBonusUnlock();
 }
 
-function _shopItemIds(){ return FURNITURE_CATALOGUE.filter(f=>f.cost>0).map(f=>f.id); }
+function _shopItemIds(){ return FURNITURE_CATALOGUE.filter(f=>f.cost>0 && !f.pro).map(f=>f.id); }
 function _shopItemsOwned(){ const o=state.ownedFurniture||[]; return _shopItemIds().filter(id=>o.includes(id)).length; }
 function _checkBonusUnlock(){
   if(state.isPro) return;
   const shopIds=_shopItemIds(); const owned=state.ownedFurniture||[];
   if(!shopIds.every(id=>owned.includes(id))) return;
   state.isPro=true;
-  const proItems=(FURNITURE_CATALOGUE||[]).filter(f=>f.pro).map(f=>f.id);
-  proItems.forEach(id=>{ if(!state.ownedFurniture.includes(id)) state.ownedFurniture.push(id); });
+  // Bonus items are now UNLOCKED (buyable at their coin cost) but NOT auto-owned.
+  // Player must buy each with coins before placing. (isPro still raises room cap 6->8.)
   if(!state.starterPackClaimed){
     state.starterPackClaimed=true;
     if(typeof addCoins==='function') addCoins(300);
