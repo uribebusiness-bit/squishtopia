@@ -87,7 +87,15 @@
   if('serviceWorker' in navigator){
     window.addEventListener('load',()=>{
       navigator.serviceWorker.register('service-worker.js')
-        .catch(err=>console.warn('SW registration failed:',err));
+        .catch(err=>{
+          // The service worker is optional (offline caching). On some hosts the
+          // file legitimately isn't found (e.g. preview environments) — that's a
+          // harmless 404, not a bug, so we stay silent on it. Anything else
+          // (a real registration/parse error) is still surfaced for debugging.
+          const msg = (err && err.message) ? err.message : String(err||'');
+          const isExpected404 = /404|not found|bad http response|failed to register a serviceworker for scope/i.test(msg);
+          if(!isExpected404){ console.warn('SW registration failed:',err); }
+        });
     });
   }
 })();
@@ -374,7 +382,7 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
   <div class="welcome-msg" id="bao-msg">Hi! I'm Bao-Bao! 🎉<br>Let's go find some squishies!</div>
   <div style="display:flex;flex-direction:column;gap:10px;margin:0 24px 24px;width:100%;max-width:300px">
     <div style="display:flex;align-items:center;gap:14px;background:rgba(255,255,255,0.85);border-radius:18px;padding:12px 16px">
-      <span style="font-size:28px">🌳</span>
+      <span style="font-size:28px">🗺️</span>
       <div style="font-size:13px;font-weight:800;color:#5a3010">Explore 9 magical zones<br><span style="font-weight:600;color:#888">Find glowing pods to collect squishies!</span></div>
     </div>
     <div style="display:flex;align-items:center;gap:14px;background:rgba(255,255,255,0.85);border-radius:18px;padding:12px 16px">
@@ -382,7 +390,7 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
       <div style="font-size:13px;font-weight:800;color:#5a3010">Squeeze 3 times to collect<br><span style="font-weight:600;color:#888">42 squishies to find — how many can you get?</span></div>
     </div>
     <div style="display:flex;align-items:center;gap:14px;background:rgba(255,255,255,0.85);border-radius:18px;padding:12px 16px">
-      <span style="font-size:28px">🏡</span>
+      <span style="font-size:28px">🌳</span>
       <div style="font-size:13px;font-weight:800;color:#5a3010">Decorate your treehouse<br><span style="font-weight:600;color:#888">Move in your squishies and make it cozy!</span></div>
     </div>
   </div>
@@ -452,6 +460,7 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
       <div style="display:flex;flex:1;gap:0;background:#F5F5F5;border-radius:12px;padding:3px">
         <button id="shelf-tab-shelf" onclick="switchShelfTab('shelf')" style="flex:1;border:none;border-radius:9px;padding:7px 0;font-size:12px;font-weight:800;cursor:pointer;background:white;color:#FF8FAB;box-shadow:0 1px 4px rgba(0,0,0,0.1);transition:all 0.2s">🧸 Shelf</button>
         <button id="shelf-tab-pedia" onclick="switchShelfTab('pedia')" style="flex:1;border:none;border-radius:9px;padding:7px 0;font-size:12px;font-weight:800;cursor:pointer;background:transparent;color:#AAA;transition:all 0.2s">📖 Squishypedia</button>
+        <button id="shelf-tab-closet" onclick="switchShelfTab('closet')" style="flex:1;border:none;border-radius:9px;padding:7px 0;font-size:12px;font-weight:800;cursor:pointer;background:transparent;color:#AAA;transition:all 0.2s">👗 Closet</button>
       </div>
       <button onclick="goHome()" style="background:#FFF0F6;border:1.5px solid #FFB3C6;border-radius:12px;padding:7px 11px;font-size:18px;cursor:pointer;line-height:1;flex-shrink:0" title="Go to your home room">🏡</button>
     </div>
@@ -484,6 +493,22 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
   <div class="trade-header"><div class="trade-title">Convert 🔁</div></div>
   <div style="flex:1;overflow-y:auto;padding-bottom:calc(var(--nav-h)+80px)">
 
+    <!-- Lucky Roll: coin sink -->
+    <div class="trade-section">
+      <div class="trade-box">
+        <div class="trade-box-title">🍀 Lucky Roll</div>
+        <div style="font-size:13px;color:#888;margin-bottom:12px;line-height:1.5">Spend coins for a surprise squishy! Usually a common friend, but you might get lucky with something rarer.</div>
+        <div id="lucky-roll-card" style="display:flex;align-items:center;gap:10px;background:#FFF8F0;border-radius:14px;padding:12px 14px;border:1.5px solid #FFE0B2">
+          <span style="font-size:28px">🍀</span>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:800;color:#2D1B00">Roll for a squishy</div>
+            <div id="lucky-cost-label" style="font-size:11px;color:#888;margin-top:2px">Costs 40 coins per roll</div>
+          </div>
+          <button id="lucky-roll-btn" onclick="_luckyRoll()" style="background:linear-gradient(135deg,#66BB6A,#43A047);border:none;border-radius:12px;padding:10px 18px;color:#fff;font-size:14px;font-weight:800;cursor:pointer">Roll</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Dupe-to-coins -->
     <div class="trade-section">
       <div class="trade-box">
@@ -512,15 +537,6 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
       </div>
     </div>
 
-    <!-- Friend code (kept but honest about what it is) -->
-    <div class="trade-section">
-      <div class="trade-box">
-        <div class="trade-box-title">🪪 Your Collector ID</div>
-        <div style="font-size:12px;color:#888;margin-bottom:8px">Share this code with friends to show off your collection.</div>
-        <div class="friend-code-display" id="my-code">SQSH-7749</div>
-        <button class="copy-code-btn" onclick="copyCode()">📋 Copy Code</button>
-      </div>
-    </div>
   </div>
   <div id="bottom-nav-trade" style="position:absolute;bottom:0;left:0;right:0;height:var(--nav-h);background:#FFFDF8;border-top:2px solid rgba(255,255,255,0.9);display:flex;align-items:center;justify-content:space-around;padding:0 8px 12px;z-index:100;box-shadow:0 -4px 20px rgba(0,0,0,0.1)">
     <button class="nav-btn" onclick="showScreen('park')"><span class="nav-icon">🌳</span><span class="nav-label">Park</span></button>
@@ -624,7 +640,7 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
   <div id="home-place-overlay" onclick="_handlePlaceOverlayClick(event)" style="position:absolute;top:58px;left:0;width:100%;height:calc(60% - 58px);z-index:25;display:none;cursor:crosshair"></div>
 
   <!-- Room tap hint -->
-  <div id="home-room-hint" style="position:absolute;top:calc(60% - 28px);left:50%;transform:translateX(-50%);font-size:11px;font-weight:700;color:rgba(255,255,255,0.9);background:rgba(60,30,10,0.65);padding:4px 14px;border-radius:20px;pointer-events:none;display:none;gap:8px;align-items:center">
+  <div id="home-room-hint" style="position:absolute;top:calc(60% - 52px);left:50%;transform:translateX(-50%);font-size:11px;font-weight:700;color:rgba(255,255,255,0.95);background:rgba(60,30,10,0.82);padding:5px 15px;border-radius:20px;pointer-events:none;display:none;gap:8px;align-items:center;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,0.25);white-space:nowrap">
     <span id="home-room-hint-text">Tap the room to place</span>
     <span onclick="_cancelPlacement()" style="cursor:pointer;pointer-events:auto;font-size:13px;opacity:0.85;padding:0 2px">✕</span>
   </div>
@@ -700,57 +716,6 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
     <div style="display:flex;justify-content:center;gap:4px;margin-bottom:20px" id="dg-streak-dots"></div>
     <button onclick="claimDailyGiftModal()" style="width:100%;background:linear-gradient(135deg,#FFD166,#FF9F43);color:white;border:none;border-radius:18px;padding:15px;font-size:17px;font-weight:900;cursor:pointer;box-shadow:0 4px 14px rgba(255,159,67,0.45)">Claim Gift! 🎁</button>
     <button onclick="closeDailyGiftModal()" style="margin-top:10px;background:none;border:none;font-size:13px;color:#BBB;cursor:pointer;padding:4px 12px">Maybe later</button>
-  </div>
-</div>
-
-<!-- PRO PURCHASE MODAL -->
-<div id="pro-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:350;display:none;align-items:center;justify-content:center;padding:20px">
-  <div id="pro-modal-card" style="background:white;border-radius:28px;width:100%;max-width:340px;overflow:hidden;animation:giftPop 0.35s cubic-bezier(0.34,1.56,0.64,1) both">
-    <!-- Header -->
-    <div style="background:linear-gradient(135deg,#7C3AED,#9C27B0);padding:24px 20px 20px;text-align:center">
-      <div style="font-size:40px">✨</div>
-      <div style="font-size:20px;font-weight:900;color:white;margin-top:6px">Bonus Pack</div>
-      <div style="font-size:12px;color:rgba(255,255,255,0.82);margin-top:4px">Free to unlock · Ask a grown-up</div>
-    </div>
-    <!-- Content -->
-    <div style="padding:20px">
-      <!-- Already Pro -->
-      <div id="pro-already" style="display:none;text-align:center;padding:10px 0 16px">
-        <div style="font-size:32px">🏆</div>
-        <div style="font-size:16px;font-weight:900;color:#7C3AED;margin-top:8px">Bonus Pack unlocked!</div>
-        <div style="font-size:12px;color:#888;margin-top:4px">All exclusive content is unlocked.</div>
-        <button onclick="closeProModal()" style="margin-top:16px;width:100%;background:#7C3AED;color:white;border:none;border-radius:16px;padding:13px;font-size:14px;font-weight:800;cursor:pointer">Awesome! ✨</button>
-      </div>
-      <!-- Free unlock -->
-      <div id="pro-options">
-        <div style="border:2.5px solid #FF9F43;border-radius:18px;padding:16px;margin-bottom:12px;position:relative">
-          <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#FF9F43;color:white;font-size:10px;font-weight:900;padding:3px 12px;border-radius:20px;white-space:nowrap">🎁 FREE UNLOCK</div>
-          <div style="font-size:13px;font-weight:900;color:#2D1B00;text-align:center;margin-bottom:8px">Everything unlocks at once:</div>
-          <div style="font-size:11px;color:#666;line-height:1.7;text-align:center">✨ All bonus furniture<br>🪙 1,000 bonus coins<br>🐿️ Exclusive squirrel costume<br>🏡 Up to 8 home residents</div>
-        </div>
-        <button onclick="unlockProMode()" style="width:100%;background:linear-gradient(135deg,#7C3AED,#9C27B0);color:white;border:none;border-radius:16px;padding:14px;font-size:15px;font-weight:900;cursor:pointer">🔓 Unlock Bonus Pack (Free)</button>
-        <div style="margin-top:10px;font-size:10px;color:#BBB;text-align:center;line-height:1.5">The Bonus Pack is free. A grown-up enters the parent PIN to unlock it.</div>
-      </div>
-      <!-- PIN confirmation view -->
-      <div id="pro-pin-view" style="display:none;text-align:center">
-        <div style="font-size:14px;font-weight:800;color:#2D1B00;margin-bottom:4px">Grown-up permission</div>
-        <div style="font-size:12px;color:#888;margin-bottom:14px" id="pro-pin-desc">Enter the parent PIN to unlock the Bonus Pack</div>
-        <div style="display:flex;justify-content:center;gap:8px;margin-bottom:16px" id="pro-pin-dots">
-          <div style="width:14px;height:14px;border-radius:50%;background:#EEE;border:2px solid #DDD" id="ppd0"></div>
-          <div style="width:14px;height:14px;border-radius:50%;background:#EEE;border:2px solid #DDD" id="ppd1"></div>
-          <div style="width:14px;height:14px;border-radius:50%;background:#EEE;border:2px solid #DDD" id="ppd2"></div>
-          <div style="width:14px;height:14px;border-radius:50%;background:#EEE;border:2px solid #DDD" id="ppd3"></div>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:200px;margin:0 auto">
-          <button class="pin-key" onclick="proPin('1')">1</button><button class="pin-key" onclick="proPin('2')">2</button><button class="pin-key" onclick="proPin('3')">3</button>
-          <button class="pin-key" onclick="proPin('4')">4</button><button class="pin-key" onclick="proPin('5')">5</button><button class="pin-key" onclick="proPin('6')">6</button>
-          <button class="pin-key" onclick="proPin('7')">7</button><button class="pin-key" onclick="proPin('8')">8</button><button class="pin-key" onclick="proPin('9')">9</button>
-          <button class="pin-key" onclick="proPin('X')" style="font-size:16px">⌫</button><button class="pin-key" onclick="proPin('0')">0</button><button class="pin-key" onclick="_cancelProPin()" style="font-size:12px;color:#AAA">✕</button>
-        </div>
-        <div id="pro-pin-error" style="color:#EF4444;font-size:11px;font-weight:700;margin-top:8px;min-height:16px"></div>
-      </div>
-    </div>
-    <button onclick="closeProModal()" style="width:calc(100% - 40px);margin:0 20px 20px;background:#F5F5F5;border:none;border-radius:14px;padding:11px;font-size:13px;font-weight:700;color:#888;cursor:pointer">Maybe later</button>
   </div>
 </div>
 
@@ -1011,10 +976,11 @@ const BADGES = [
   {id:'streak7',  name:'Week Warrior', icon:'⚡', desc:'7-day streak'},
   {id:'daily30',  name:'Dedicated',    icon:'📅', desc:'30-day login'},
   {id:'trader',   name:'Trader',       icon:'🤝', desc:'Complete a trade'},
-  {id:'social',   name:'Social Squish',icon:'👥', desc:'Share your Collector ID'},
-  {id:'explorer', name:'Explorer',     icon:'🗺️', desc:'Visit all Squish Spots'},
+  {id:'explorer', name:'Explorer',     icon:'🗺️', desc:'Explore the whole park'},
   {id:'speed',    name:'Speed Squisher',icon:'⏱️',desc:'Collect 10 squishies'},
   {id:'family',   name:'Family First', icon:'🏠', desc:'Complete a full family'},
+  {id:'bff',      name:'Best Friends', icon:'💛', desc:'Reach Friendship Lv 10 with a squishy'},
+  {id:'soulmates',name:'Soulmate Squad',icon:'✨', desc:'Reach Lv 10 with 10 squishies'},
 ];
 
 const EVENTS = [
@@ -1042,7 +1008,7 @@ let state = {
   version:4,
   collected:[], counts:{}, totalSqueezes:0, streak:0, lastVisit:null,
   spotsVisited:new Set(), avatar:'🐿️', name:'Squish Explorer',
-  badges:new Set(), friendCode:'SQSH-'+(7000+Math.floor(Math.random()*2999)), soundEnabled:true, musicEnabled:true, tradeEnabled:true, dailyLimitEnabled:false, playTimeToday:0, lastLimitDay:'', parentPin:'0000',
+  badges:new Set(), soundEnabled:true, musicEnabled:true, tradeEnabled:true, dailyLimitEnabled:false, playTimeToday:0, lastLimitDay:'', parentPin:'0000',
   friendship:{}, lastDailyGift:null, dailyGiftDay:0,
   firstTime:true, xp:0, isPro:false, starterPackClaimed:false,
   coins:0, ownedFurniture:['rug_basic','table_basic','lamp_basic'], placedFurniture:[
@@ -3967,14 +3933,25 @@ function drawPods(ctx,W,H){
     }
     if(rev<0.8){
       const ea=(rev-0.4)/0.4;ctx.save();ctx.globalAlpha=ea*0.9;
-      ctx.shadowColor=pod.golden?'rgba(255,215,0,0.8)':'rgba(255,255,200,.5)';ctx.shadowBlur=12+pod.glow*8;
+      const gR=pulseR*(1.7+pod.glow*0.25);
+      const gGlow=ctx.createRadialGradient(px,py,pulseR*0.5,px,py,gR);
+      gGlow.addColorStop(0,pod.golden?'rgba(255,215,0,0.45)':'rgba(255,255,200,0.32)');
+      gGlow.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle=gGlow;ctx.beginPath();ctx.arc(px,py,gR,0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha=ea*0.9;
       ctx.fillStyle=pod.golden?'rgba(255,230,100,0.85)':'rgba(255,255,255,0.82)';ctx.beginPath();ctx.arc(px,py,pulseR,0,Math.PI*2);ctx.fill();
       ctx.strokeStyle=pod.golden?'rgba(255,200,0,.8)':'rgba(200,220,200,.7)';ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(px,py,pulseR,0,Math.PI*2);ctx.stroke();
       ctx.fillStyle=pod.golden?'rgba(200,140,0,.9)':'rgba(150,180,150,.9)';ctx.font='bold '+(pulseR*0.9)+'px Nunito,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(pod.golden?'★':'?',px,py+2);ctx.restore();return;
     }
     const fa=(rev-0.8)/0.2;
     ctx.save();ctx.globalAlpha=fa*(0.3+pod.glow*0.2);const halo=ctx.createRadialGradient(px,py,pulseR*0.4,px,py,pulseR*2.4);halo.addColorStop(0,_ha(pod.sq.colors[1],0.53));halo.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=halo;ctx.beginPath();ctx.arc(px,py,pulseR*2.4,0,Math.PI*2);ctx.fill();ctx.restore();
-    ctx.save();ctx.globalAlpha=fa;if(pod.golden){ctx.shadowColor='#ffd700';ctx.shadowBlur=20+pod.glow*15;}
+    ctx.save();ctx.globalAlpha=fa;
+    if(pod.golden){
+      const gR2=pulseR*2.0;
+      const gg=ctx.createRadialGradient(px,py,pulseR*0.6,px,py,gR2);
+      gg.addColorStop(0,'rgba(255,215,0,0.4)');gg.addColorStop(1,'rgba(255,215,0,0)');
+      ctx.fillStyle=gg;ctx.beginPath();ctx.arc(px,py,gR2,0,Math.PI*2);ctx.fill();
+    }
     const fill=ctx.createRadialGradient(px-pulseR*.3,py-pulseR*.3,pulseR*.05,px,py,pulseR);fill.addColorStop(0,'rgba(255,255,255,.9)');fill.addColorStop(0.4,_ha(pod.sq.colors[0],0.87));fill.addColorStop(1,_ha(pod.sq.colors[1],0.8));ctx.fillStyle=fill;ctx.beginPath();ctx.arc(px,py,pulseR,0,Math.PI*2);ctx.fill();
     ctx.strokeStyle=pod.golden?'#ffd700':pod.sq.colors[2];ctx.lineWidth=2.5;ctx.globalAlpha=fa*(0.7+pod.glow*.3);ctx.beginPath();ctx.arc(px,py,pulseR,0,Math.PI*2);ctx.stroke();
     const sh=ctx.createRadialGradient(px-pulseR*.3,py-pulseR*.35,0,px-pulseR*.2,py-pulseR*.2,pulseR*.55);sh.addColorStop(0,'rgba(255,255,255,.85)');sh.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=sh;ctx.globalAlpha=fa*.5;ctx.beginPath();ctx.arc(px,py,pulseR,0,Math.PI*2);ctx.fill();ctx.restore();
@@ -4261,7 +4238,7 @@ function checkCollision(){
   const pEl=document.getElementById('screen-park');if(!pEl||!pEl.classList.contains('active'))return;
   for(let i=0;i<pods.length;i++){
     const pod=pods[i];if(pod.collected||pod.revealAmt<0.45)continue;if(pod.respawnAt&&Date.now()<pod.respawnAt)continue;if(pod.dormantUntil&&Date.now()<pod.dormantUntil)continue;
-    if(Math.hypot(sqX-pod.wx,sqY-pod.wy)<pod.r*2.0){pod.collected=true;podOpenCooldown=300;sqEmotion2='excited';sqEmoT2=0;if(pod.golden)triggerGolden();_collectingPod=pod;openSquishPlay(pod.sq,pod.wob.toString());return;}
+    if(Math.hypot(sqX-pod.wx,sqY-pod.wy)<72){pod.collected=true;podOpenCooldown=300;sqEmotion2='excited';sqEmoT2=0;if(pod.golden)triggerGolden();_collectingPod=pod;openSquishPlay(pod.sq,pod.wob.toString());return;}
   }
 }
 
@@ -4422,7 +4399,7 @@ const FURNITURE_CATALOGUE = [
   {id:'starbed',     name:'Galaxy Bed',     icon:'🌌', cost:0,   rarity:'pro',    theme:'Space',  slot:'left',      desc:'Sleep among the stars',   pro:true},
   {id:'candy_sofa',  name:'Candy Couch',    icon:'🍭', cost:0,   rarity:'pro',    theme:'Candy',  slot:'left',      desc:'Gummy cushions, candy-striped',       pro:true},
   {id:'trophy_wall', name:'Trophy Wall',    icon:'🏆', cost:0,   rarity:'pro',    theme:'Forest', slot:'wall',      desc:'Show off your rarest',    pro:true},
-  {id:'pirate_chest',name:'Pirate Chest',   icon:'🧰', cost:0,   rarity:'pro',    theme:'Pirate', slot:'corner',    desc:'Full of treasure',        pro:true},
+  {id:'pirate_chest',name:'Pirate Chest',   icon:'💰', cost:0,   rarity:'pro',    theme:'Pirate', slot:'corner',    desc:'Full of treasure',        pro:true},
 ];
 
 // ── HOME ROOM RENDERER ──
@@ -6166,7 +6143,8 @@ function _buildShopTab(el){
     } else if(isOwned){
       btn=`<button onclick="_placeFurniture('${item.id}')" style="width:100%;background:#4CAF50;border:none;border-radius:12px;padding:7px;font-size:11px;font-weight:800;color:white;cursor:pointer;margin-top:2px">Place</button>`;
     } else if(isPaid){
-      btn=`<button onclick="openProModal()" style="width:100%;background:linear-gradient(135deg,#9C27B0,#7B1FA2);border:none;border-radius:12px;padding:7px;font-size:11px;font-weight:800;color:white;cursor:pointer;margin-top:2px">🔒 Bonus</button>`;
+      const _sOwned=_shopItemsOwned(), _sTotal=_shopItemIds().length;
+      btn=`<div style="width:100%;background:#F3E5F5;border:1.5px solid #CE93D8;border-radius:12px;padding:7px;font-size:10px;font-weight:800;color:#7B1FA2;text-align:center;margin-top:2px;box-sizing:border-box;line-height:1.3">🔒 Bonus<br><span style="font-size:9px;font-weight:700;color:#9C27B0">Buy all shop items (${_sOwned}/${_sTotal})</span></div>`;
     } else if(item.cost===0){
       btn=`<button onclick="_buyFurniture('${item.id}')" style="width:100%;background:#FF9F43;border:none;border-radius:12px;padding:7px;font-size:11px;font-weight:800;color:white;cursor:pointer;margin-top:2px">Get Free!</button>`;
     } else {
@@ -6191,16 +6169,16 @@ function _buildShopTab(el){
 
   const proBannerBtn = isPro
     ? `<div style="background:rgba(255,255,255,0.2);border-radius:14px;padding:8px 14px;font-size:12px;font-weight:900;color:white">✓ UNLOCKED</div>`
-    : `<button onclick="openProModal()" style="background:white;border:none;border-radius:14px;padding:8px 14px;font-size:12px;font-weight:900;color:#7B1FA2;cursor:pointer;white-space:nowrap">Unlock</button>`;
+    : `<div style="background:rgba(255,255,255,0.2);border-radius:14px;padding:8px 14px;font-size:13px;font-weight:900;color:white;white-space:nowrap">${_shopItemsOwned()}/${_shopItemIds().length}</div>`;
   const proBannerText = isPro
-    ? 'All exclusive furniture unlocked! Thanks for unlocking the Bonus Pack. ✨'
-    : 'Unlock all exclusive furniture, 1000 bonus coins, and exclusive content — free with a grown-up\'s help.';
+    ? 'All bonus furniture unlocked — you collected every shop item! ✨'
+    : `Buy all ${_shopItemIds().length} shop items to unlock 6 special bonus pieces — no purchase, just play!`;
 
   html+=`</div>
   <div style="margin:0 14px 16px;background:linear-gradient(135deg,#9C27B0,#7B1FA2);border-radius:18px;padding:18px;display:flex;align-items:center;gap:14px">
     <span style="font-size:36px">${isPro?'🏆':'✨'}</span>
     <div style="flex:1">
-      <div style="font-size:14px;font-weight:900;color:white">${isPro?'Bonus Pack ✓':'Unlock Bonus Pack'}</div>
+      <div style="font-size:14px;font-weight:900;color:white">${isPro?'Bonus Pack ✓':'Bonus Pack — keep collecting!'}</div>
       <div style="font-size:11px;color:rgba(255,255,255,0.8);margin-top:2px">${proBannerText}</div>
     </div>
     ${proBannerBtn}
@@ -6451,6 +6429,30 @@ function _buyFurniture(id){
   // Immediately enter placement mode — no second tap needed
   showToast(`${item.icon} Tap the room to place ${item.name}!`);
   _placeFurniture(id);
+  _checkBonusUnlock();
+}
+
+function _shopItemIds(){ return FURNITURE_CATALOGUE.filter(f=>f.cost>0).map(f=>f.id); }
+function _shopItemsOwned(){ const o=state.ownedFurniture||[]; return _shopItemIds().filter(id=>o.includes(id)).length; }
+function _checkBonusUnlock(){
+  if(state.isPro) return;
+  const shopIds=_shopItemIds(); const owned=state.ownedFurniture||[];
+  if(!shopIds.every(id=>owned.includes(id))) return;
+  state.isPro=true;
+  const proItems=(FURNITURE_CATALOGUE||[]).filter(f=>f.pro).map(f=>f.id);
+  proItems.forEach(id=>{ if(!state.ownedFurniture.includes(id)) state.ownedFurniture.push(id); });
+  if(!state.starterPackClaimed){
+    state.starterPackClaimed=true;
+    if(typeof addCoins==='function') addCoins(300);
+    if(typeof addXP==='function') addXP(200,'bonus_pack');
+  }
+  saveState();
+  const _sc=document.getElementById('home-tab-content');
+  if(_sc){ try{ _buildShopTab(_sc); }catch(e){} }
+  if(typeof haptic==='function') haptic(HAP.milestone);
+  if(typeof launchConfetti==='function') launchConfetti(['#7C3AED','#9C27B0','#FF9F43','#FFD54F','#E040FB']);
+  showToast('🎉 BONUS PACK UNLOCKED! 6 special items + 300🪙 — tap the Bonus items to place them! ✨');
+  setTimeout(()=>{ showToast('Your room holds 8 items at a time — tap any item to swap in your bonus pieces! 🏡'); }, 4200);
 }
 
 // ── Free-position furniture placement ──
@@ -6505,7 +6507,7 @@ function _placeResident(id){
   const current=(state.placedResidents||[]).filter(r=>r.id!==id).length;
   const cap=state.isPro?8:6;
   if(current>=cap){
-    showToast(state.isPro?'Room is full! Max 8 residents 🏡':'Room is full! Unlock the Bonus Pack for up to 8 🌟');
+    showToast(state.isPro?'Room is full! Max 8 residents 🏡':'Room is full! Buy all shop items to unlock room for 8 🌟');
     return;
   }
   _placingResidentId=id;_placingFurnitureId=null;
@@ -6760,6 +6762,14 @@ function drawSquirrelHome(ctx, W, H){
 
   if(!homeShown){
     homeShown=true;
+    // Clear the fog around the treehouse clearing so it's never painted over by
+    // the fog layer (which draws after the home). The player can hit 95% overall
+    // exploration without physically walking over this exact spot, leaving these
+    // cells fogged — so reveal a generous radius around HOME here, once.
+    const hcx=Math.floor(HOME_WX/FOG_GRID), hcy=Math.floor(HOME_WY/FOG_GRID), hr=6;
+    for(let dy=-hr;dy<=hr;dy++)for(let dx=-hr;dx<=hr;dx++){
+      if(dx*dx+dy*dy<=hr*hr){ exploredCells[(hcx+dx)+','+(hcy+dy)]=1; }
+    }
     showToast('🌳 Your treehouse appeared! Tap it to visit home!');
     state.badges.add('explorer');saveState();
   }
@@ -7305,10 +7315,17 @@ function initPark(){
   if(W<20||H<20){setTimeout(initPark,50);return;}
   parkW=W;parkH=H;
   const dpr=window.devicePixelRatio||1;
-  bg.width=Math.round(W*dpr);bg.height=Math.round(H*dpr);bg.style.width=W+'px';bg.style.height=H+'px';
-  ov.width=Math.round(W*dpr);ov.height=Math.round(H*dpr);ov.style.width=W+'px';ov.style.height=H+'px';
-  bg.getContext('2d').setTransform(dpr,0,0,dpr,0,0);
-  ov.getContext('2d').setTransform(dpr,0,0,dpr,0,0);
+  // Only reallocate the canvas buffers when the target size actually changes.
+  // Returning to the park hits this every time with the SAME dimensions —
+  // re-setting .width/.height forces a full GPU buffer realloc + clears context,
+  // a visible hitch on low-end devices.
+  const _bgW=Math.round(W*dpr),_bgH=Math.round(H*dpr);
+  if(bg.width!==_bgW||bg.height!==_bgH){
+    bg.width=_bgW;bg.height=_bgH;bg.style.width=W+'px';bg.style.height=H+'px';
+    ov.width=_bgW;ov.height=_bgH;ov.style.width=W+'px';ov.style.height=H+'px';
+    bg.getContext('2d').setTransform(dpr,0,0,dpr,0,0);
+    ov.getContext('2d').setTransform(dpr,0,0,dpr,0,0);
+  }
   if(sqX===null){sqX=WORLD_W*0.35;sqY=WORLD_H*0.46;}
   camX=sqX-W/2;camY=sqY-H/2;clampCam(W,H);camX=Math.round(camX);camY=Math.round(camY);
   try{getWorldCanvas();drawWorldBg(bg.getContext('2d'),W,H);}catch(e){console.error('paintWorld crash:',e);const el=document.getElementById('park-error');if(el){el.textContent='Map error: '+e.message;el.style.display='block';}}
@@ -7921,7 +7938,10 @@ function playCollectSound(){if(!state.soundEnabled)return;try{const ac=getAC(),o
 function launchConfetti(colors){
   const wrap=document.getElementById('confetti-wrap');
   wrap.innerHTML='';
-  for(let i=0;i<60;i++){
+  // Device-aware particle count: full 60 on capable phones, ~30 on low-end.
+  const _lowEnd=((navigator.hardwareConcurrency||8)<=4)||((navigator.deviceMemory||8)<=3);
+  const _confettiN=_lowEnd?30:60;
+  for(let i=0;i<_confettiN;i++){
     const el=document.createElement('div');
     const c=colors[Math.floor(Math.random()*colors.length)];
     const size=8+Math.random()*10;
@@ -7945,6 +7965,12 @@ function switchShelfTab(tab){
   _shelfTab = tab;
   const shelfBtn = document.getElementById('shelf-tab-shelf');
   const pediaBtn = document.getElementById('shelf-tab-pedia');
+  const closetBtn = document.getElementById('shelf-tab-closet');
+  if(closetBtn){
+    closetBtn.style.background = tab==='closet' ? 'white' : 'transparent';
+    closetBtn.style.color      = tab==='closet' ? '#FF6B8A' : '#AAA';
+    closetBtn.style.boxShadow  = tab==='closet' ? '0 1px 4px rgba(0,0,0,0.1)' : 'none';
+  }
   if(shelfBtn && pediaBtn){
     shelfBtn.style.background  = tab==='shelf' ? 'white' : 'transparent';
     shelfBtn.style.color       = tab==='shelf' ? '#FF8FAB' : '#AAA';
@@ -7954,7 +7980,7 @@ function switchShelfTab(tab){
     pediaBtn.style.boxShadow   = tab==='pedia' ? '0 1px 4px rgba(0,0,0,0.1)' : 'none';
   }
   const titleEl = document.getElementById('shelf-title-label');
-  if(titleEl) titleEl.textContent = tab==='pedia' ? 'Squishypedia 📖' : 'Squish Shelf 🧸';
+  if(titleEl) titleEl.textContent = tab==='pedia' ? 'Squishypedia 📖' : tab==='closet' ? 'Closet 👗' : 'Squish Shelf 🧸';
   buildShelf();
 }
 
@@ -7983,6 +8009,18 @@ function _drawSilhouette(canvas, sq){
   ctx.fillStyle = shim; ctx.fillRect(0,0,60,60);
 }
 
+function _buildClosetComingSoon(el){
+  if(!el) return;
+  el.innerHTML=`
+  <div style="padding:34px 22px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px">
+    <div style="width:96px;height:96px;border-radius:50%;background:radial-gradient(circle at 50% 40%,#FFE0EC,#FFC2D8);display:flex;align-items:center;justify-content:center;font-size:52px;box-shadow:0 6px 18px rgba(255,140,180,0.35)">👗</div>
+    <div style="font-size:19px;font-weight:900;color:#FF6B8A">Squishy Closet</div>
+    <div style="display:inline-block;background:#FFF0F5;border:1.5px solid #FFD6E0;border-radius:20px;padding:5px 16px;font-size:12px;font-weight:800;color:#FF6B8A;letter-spacing:1px">✨ COMING SOON ✨</div>
+    <div style="font-size:13px;color:#8b6b5a;line-height:1.6;max-width:260px">Dress up your squishies with hats, bows, crowns and more! Give each one their own style. <br><br>We're stitching it together now — check back in a future update! 🧵</div>
+    <div style="display:flex;gap:10px;margin-top:4px;font-size:26px">👑 🎀 🎩 🌸 🧢</div>
+  </div>`;
+}
+
 function buildShelf(){
   const content = document.getElementById('shelf-content');
   const collected = state.collected.length;
@@ -7993,6 +8031,7 @@ function buildShelf(){
   const bar = document.getElementById('shelf-progress-bar');
   if(bar) bar.style.width = pct+'%';
   if(_shelfTab === 'pedia') _buildPedia(content);
+  else if(_shelfTab === 'closet') _buildClosetComingSoon(content);
   else _buildShelfView(content);
 }
 
@@ -8411,7 +8450,6 @@ function buildEvents(){
 
 // ===== TRADE =====
 function buildTrade(){
-  document.getElementById('my-code').textContent=state.friendCode;
 
   const COIN_VALUE={common:1,uncommon:2,rare:4,epic:9,legendary:20,mythic:50};
   const dupes=SQUISHIES.filter(s=>state.collected.includes(s.id)&&(state.counts[s.id]||0)>1);
@@ -8482,6 +8520,30 @@ function buildTrade(){
     });
     opts.innerHTML=html;
   }
+}
+
+// Lucky Roll — the coin sink. Spend coins for a random squishy. Rarity is weighted
+// heavily toward common/uncommon so it never trivializes the rare chase.
+function _luckyRoll(){
+  const LUCKY_COST=40;
+  if((state.coins||0) < LUCKY_COST){ showToast('Not enough coins! 🪙'); return; }
+  spendCoins(LUCKY_COST);
+  const roll=Math.random();
+  let tier = roll<0.55 ? 'common'
+           : roll<0.82 ? 'uncommon'
+           : roll<0.95 ? 'rare'
+           : roll<0.99 ? 'epic'
+           : 'legendary';
+  let pool=SQUISHIES.filter(s=>s.rarity===tier && !state.collected.includes(s.id));
+  if(!pool.length) pool=SQUISHIES.filter(s=>s.rarity===tier);
+  if(!pool.length) pool=SQUISHIES.slice();
+  const winner=pool[Math.floor(Math.random()*pool.length)];
+  if(!winner){ addCoins(LUCKY_COST); showToast('Roll failed — coins refunded.'); return; }
+  state.badges.add('trader');
+  saveState();
+  updateCoinDisplay();
+  buildTrade();
+  _mysteryReveal(winner);
 }
 
 // Mystery converter — spend dupes of one rarity, get a guaranteed higher-rarity squishy
@@ -8590,10 +8652,7 @@ function _mysteryReveal(winner){
 }
 
 function copyCode(){
-  navigator.clipboard.writeText(state.friendCode).catch(()=>{});
-  showToast('📋 Code copied!');
-  // Sharing your Collector ID earns the Social badge (no multiplayer implied).
-  if(!state.badges.has('social')){ state.badges.add('social'); saveState(); checkAchievements(); }
+  // Collector ID feature removed — no-op kept for safety against stale references.
 }
 
 
@@ -8704,7 +8763,9 @@ function checkAchievements(){
   if(state.streak>=3) state.badges.add('streak3');
   if(state.streak>=7) state.badges.add('streak7');
   if((state.dailyGiftDay||0)>=30) state.badges.add('daily30');
-  if([...state.spotsVisited].length>=5) state.badges.add('explorer');
+  // (Explorer badge is granted when the treehouse appears after full park
+  // exploration. The old spotsVisited>=5 check was dead code — Set never
+  // populated — so it's removed.)
   // Speed Squisher — collected 10+ squishies (session activity proxy)
   if(c>=10) state.badges.add('speed');
   // Family complete
@@ -8712,6 +8773,11 @@ function checkAchievements(){
     const members=SQUISHIES.filter(s=>s.family===fam.id);
     if(members.every(s=>state.collected.includes(s.id))) state.badges.add('family');
   });
+  // End-game friendship: Lv 10 needs 28 squeezes (floor(28/3)+1=10).
+  const maxedFriends = Object.entries(state.friendship||{})
+    .filter(([id,sq])=>state.collected.includes(id) && sq>=27).length;
+  if(maxedFriends>=1) state.badges.add('bff');
+  if(maxedFriends>=10) state.badges.add('soulmates');
   saveState();
 }
 
@@ -8914,91 +8980,6 @@ function startGame(){
 // Use requestAnimationFrame so the DOM is fully painted before we draw
 requestAnimationFrame(drawBaoBao);
 // ===== PRO PURCHASE MODAL =====
-let _proPinBuffer = '';
-let _proPurchaseType = ''; // 'starter' | 'pro'
-
-function openProModal(){
-  const modal = document.getElementById('pro-modal');
-  if(!modal) return;
-  _proPinBuffer = '';
-  _proPurchaseType = '';
-  // Show correct state
-  document.getElementById('pro-already').style.display   = state.isPro ? '' : 'none';
-  document.getElementById('pro-options').style.display   = state.isPro ? 'none' : '';
-  document.getElementById('pro-pin-view').style.display  = 'none';
-  modal.style.display = 'flex';
-}
-
-function closeProModal(){
-  const modal = document.getElementById('pro-modal');
-  if(modal) modal.style.display = 'none';
-  _proPinBuffer = '';
-}
-
-function unlockProMode(){
-  _proPurchaseType = 'pro';
-  _showProPin('Enter the parent PIN to unlock the Bonus Pack');
-}
-
-function _showProPin(desc){
-  document.getElementById('pro-options').style.display  = 'none';
-  document.getElementById('pro-pin-view').style.display = '';
-  document.getElementById('pro-pin-desc').textContent   = desc;
-  document.getElementById('pro-pin-error').textContent  = '';
-  _proPinBuffer = '';
-  _updateProPinDots();
-}
-
-function _cancelProPin(){
-  document.getElementById('pro-options').style.display  = '';
-  document.getElementById('pro-pin-view').style.display = 'none';
-  _proPinBuffer = '';
-}
-
-function _updateProPinDots(){
-  for(let i=0;i<4;i++){
-    const d = document.getElementById('ppd'+i);
-    if(d) d.style.background = i < _proPinBuffer.length ? '#7C3AED' : '#EEE';
-  }
-}
-
-function proPin(k){
-  if(k==='X'){ _proPinBuffer=_proPinBuffer.slice(0,-1); _updateProPinDots(); return; }
-  if(_proPinBuffer.length>=4) return;
-  _proPinBuffer+=k;
-  _updateProPinDots();
-  if(_proPinBuffer.length===4) _confirmProPurchase();
-}
-
-function _confirmProPurchase(){
-  // Parent-PIN gate (same PIN as parent settings, default 0000). Pro Mode is a
-  // FREE unlock — no payment — so a correct PIN grants everything at once.
-  const correctPin = state.parentPin||'0000';
-  if(_proPinBuffer !== correctPin){
-    document.getElementById('pro-pin-error').textContent = 'Wrong PIN. Try again.';
-    _proPinBuffer = '';
-    _updateProPinDots();
-    return;
-  }
-  state.isPro = true;
-  // Unlock all Pro furniture
-  const proItems = (FURNITURE_CATALOGUE||[]).filter(f=>f.pro).map(f=>f.id);
-  proItems.forEach(id=>{ if(!state.ownedFurniture.includes(id)) state.ownedFurniture.push(id); });
-  // One-time bonus coins on first unlock
-  if(!state.starterPackClaimed){
-    state.starterPackClaimed = true;
-    addCoins(1000);
-    addXP(200, 'starter_pack');
-  }
-  saveState();
-  closeProModal();
-  _triggerLevelUp({lvl:'✨', title:'Bonus Pack Unlocked!'});
-  setTimeout(()=>showToast('🎁 +1000🪙 · All bonus furniture unlocked!'),600);
-  // Rebuild shop to reflect new state
-  const content = document.getElementById('home-tab-content');
-  if(content){ const tab=document.getElementById('home-tab-shop'); if(tab&&tab.style.borderBottom&&tab.style.borderBottom.includes('8b4513')) _buildShopTab(content); }
-}
-
 let _baoIdx=0;
 function _rotateBao(){_baoIdx=(_baoIdx+1)%BAO_MSGS.length;const el=document.getElementById('bao-msg');if(el)el.textContent=BAO_MSGS[_baoIdx];setTimeout(_rotateBao,4000);}
 setTimeout(_rotateBao,4000);
