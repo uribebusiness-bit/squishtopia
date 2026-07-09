@@ -335,7 +335,7 @@ input:checked+.toggle-slider::before{transform:translateX(22px)}
 @keyframes discBannerIn{0%{opacity:0;transform:translateY(-12px) scale(0.8)}60%{opacity:1;transform:translateY(0) scale(1.08)}100%{opacity:1;transform:scale(1)}}
 @keyframes discSparkle{0%{opacity:0;transform:scale(0)}40%{opacity:1;transform:scale(1.2)}100%{opacity:0;transform:scale(0.5) translateY(-40px)}}
 /* ===== NOTIFICATIONS ===== */
-.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--darktext);color:white;padding:13px 26px;border-radius:40px;font-size:14px;font-weight:800;z-index:500;transition:transform 0.32s cubic-bezier(0.34,1.56,0.64,1);pointer-events:none;white-space:nowrap;box-shadow:0 6px 24px rgba(0,0,0,0.25),0 2px 6px rgba(0,0,0,0.15);letter-spacing:0.2px}
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--darktext);color:white;padding:12px 22px;border-radius:22px;font-size:14px;font-weight:800;z-index:500;transition:transform 0.32s cubic-bezier(0.34,1.56,0.64,1);pointer-events:none;white-space:normal;width:max-content;max-width:min(88vw,340px);text-align:center;line-height:1.35;box-shadow:0 6px 24px rgba(0,0,0,0.25),0 2px 6px rgba(0,0,0,0.15);letter-spacing:0.2px}
 .toast.show{transform:translateX(-50%) translateY(0)}
 
 /* ===== AVATAR PICKER ===== */
@@ -4289,6 +4289,7 @@ function handleParkTap(mx,my){
 }
 
 function buildHome(){
+  _sanitizePlacedFurniture();
   // Update coin display
   document.getElementById('home-coin-count').textContent = state.coins||0;
   // Draw the room
@@ -4443,6 +4444,33 @@ const FURNITURE_CATALOGUE = [
 ];
 
 // ── HOME ROOM RENDERER ──
+// Repair placed-furniture entries whose coordinates are missing/NaN/out of
+// range. Such an entry draws off-canvas and becomes invisible while the shop
+// still reports "Placed" -- the player sees an item they can never see or move.
+// Also drops entries whose id no longer exists in the catalogue.
+// Idempotent and cheap: safe to call on every room entry. Defined AFTER
+// FURNITURE_CATALOGUE so the lookup is always available.
+function _sanitizePlacedFurniture(){
+  if(!Array.isArray(state.placedFurniture)){ state.placedFurniture=[]; return; }
+  let changed=false;
+  state.placedFurniture = state.placedFurniture.filter(p=>{
+    if(!p || typeof p.id!=='string'){ changed=true; return false; }
+    const item = FURNITURE_CATALOGUE.find(f=>f.id===p.id);
+    if(!item){ changed=true; return false; }
+    const hi = (item.slot==='wall' || item.slot==='table_top');
+    let x=Number(p.x), y=Number(p.y);
+    if(!isFinite(x)) x = 0.5;
+    if(!isFinite(y)) y = hi ? 0.55 : 0.80;
+    const nx = Math.max(0.13, Math.min(0.80, x));
+    const ny = hi ? Math.max(0.40, Math.min(0.86, y))
+                  : Math.max(0.60, Math.min(0.92, y));
+    if(nx!==p.x || ny!==p.y) changed=true;
+    p.x=nx; p.y=ny;
+    return true;
+  });
+  if(changed) saveState();
+}
+
 let _homeRoomT=0, _homeRoomAnim=null;
 // Squirrel home position (normalized 0-1)
 let _sqHomeX=0.25, _sqHomeY=0.68;
@@ -6573,8 +6601,8 @@ function _checkBonusUnlock(){
   if(_sc){ try{ _buildShopTab(_sc); }catch(e){} }
   if(typeof haptic==='function') haptic(HAP.milestone);
   if(typeof launchConfetti==='function') launchConfetti(['#7C3AED','#9C27B0','#FF9F43','#FFD54F','#E040FB']);
-  showToast('🎉 BONUS PACK UNLOCKED! 6 special items + 300🪙 — tap the Bonus items to place them! ✨');
-  setTimeout(()=>{ showToast('Your room holds 8 items at a time — tap any item to swap in your bonus pieces! 🏡'); }, 4200);
+  showToast('🎉 BONUS PACK UNLOCKED! +300🪙 and 6 bonus items!');
+  setTimeout(()=>{ showToast('🏡 Room holds 8 items — tap one to swap!'); }, 4200);
 }
 
 // ── Free-position furniture placement ──
@@ -6891,7 +6919,7 @@ function drawSquirrelHome(ctx, W, H){
     for(let dy=-hr;dy<=hr;dy++)for(let dx=-hr;dx<=hr;dx++){
       if(dx*dx+dy*dy<=hr*hr){ exploredCells[(hcx+dx)+','+(hcy+dy)]=1; }
     }
-    showToast('🌳 Your treehouse appeared! Tap it to visit home!');
+    showToast('🌳 Your treehouse appeared! Tap to visit!');
     state.badges.add('explorer');saveState();
   }
 
@@ -7400,7 +7428,7 @@ function drawAmbient(ctx,W,H){
 // Shelf shortcut enforces the same rule.
 function goHome(){
   if(exploredPct < 95){
-    showToast('🌳 Explore the whole park to unlock your home! ('+exploredPct+'% explored)');
+    showToast('🌳 Explore the park to unlock home ('+exploredPct+'%)');
     return;
   }
   showScreen('home');
