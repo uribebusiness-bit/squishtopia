@@ -1,6 +1,6 @@
 // Nimbets / Squishtopia service worker — offline support
 // Bump CACHE when you deploy changes so clients fetch the new version.
-const CACHE = 'squishtopia-v3';
+const CACHE = 'squishtopia-v4';
 
 // Core files needed to run the game offline. Paths are relative to the
 // service worker's location (the repo's squishtopia/ folder on GitHub Pages).
