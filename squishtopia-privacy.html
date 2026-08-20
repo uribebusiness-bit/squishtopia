@@ -147,7 +147,24 @@
       change the “Last updated” date above. If we ever add a feature that collects personal
       information, we will update this policy first and request any consent required by law.
     </p>
-
+    <h2 id="delete-data">How to delete your data</h2>
+    <p>
+      Nimbets stores your game data only on your own device, so you're always in
+      control of it. To delete it:
+    </p>
+    <ul>
+      <li><strong>In the app:</strong> Open the Me tab → Settings → Reset Progress.
+      This immediately and permanently erases all locally stored game data on that
+      device, including your squishy collection, coins, home decorations, and any
+      purchase-linked unlock status.</li>
+      <li><strong>Or:</strong> uninstall the app, or clear its data through your
+      device's app settings — either one has the same effect.</li>
+    </ul>
+    <p>
+      Because Nimbets never transmits your game data off your device, there is
+      nothing stored on any server for us to separately delete — clearing your
+      device is complete and immediate. Deleted data cannot be recovered.
+    </p>
     <h2>Contact us</h2>
     <p>
       If you have any questions about this Privacy Policy, please contact us at:<br>
@@ -257,7 +274,27 @@
       actualizaremos primero esta política y solicitaremos cualquier consentimiento exigido
       por la ley.
     </p>
-
+    <h2 id="delete-data-es">Cómo eliminar tus datos</h2>
+    <p>
+      Nimbets guarda los datos de tu juego únicamente en tu propio dispositivo, así
+      que siempre tienes el control. Para eliminarlos:
+    </p>
+    <ul>
+      <li><strong>En la app:</strong> Abre la pestaña Yo → Configuración → Reiniciar
+      Progreso. Esto borra de inmediato y de forma permanente todos los datos del
+      juego guardados en ese dispositivo, incluyendo tu colección de squishies, tus
+      monedas, las decoraciones de tu hogar y cualquier desbloqueo vinculado a una
+      compra.</li>
+      <li><strong>O bien:</strong> desinstala la aplicación, o borra sus datos desde
+      la configuración de aplicaciones de tu dispositivo — ambas opciones tienen el
+      mismo efecto.</li>
+    </ul>
+    <p>
+      Como Nimbets nunca transmite los datos de tu juego fuera de tu dispositivo, no
+      hay nada guardado en ningún servidor que debamos eliminar por separado — borrar
+      tu dispositivo es completo e inmediato. Los datos eliminados no se pueden
+      recuperar.
+    </p>
     <h2>Contáctanos</h2>
     <p>
       Si tienes alguna pregunta sobre esta Política de Privacidad, contáctanos en:<br>
@@ -279,8 +316,25 @@
     document.getElementById('btn-es').classList.toggle('active', l==='es');
     document.documentElement.lang = l;
   }
-  // Honor browser language on first load
-  if((navigator.language||'').toLowerCase().startsWith('es')) setLang('es');
+  // If arriving via a deep link to the delete-data section (e.g. from the
+  // Play Store's Data safety "Delete data" link), force the language whose
+  // section actually contains that anchor, so it's visible and scrollable
+  // regardless of the visitor's browser language.
+  const hash = location.hash;
+  if(hash === '#delete-data'){
+    setLang('en');
+  } else if(hash === '#delete-data-es'){
+    setLang('es');
+  } else if((navigator.language||'').toLowerCase().startsWith('es')){
+    setLang('es');
+  }
+  // Re-trigger the scroll now that the right section is visible — the
+  // browser's own automatic anchor-scroll may have already run before this
+  // script executed, while the target was still hidden.
+  if(hash){
+    const target = document.getElementById(hash.slice(1));
+    if(target) setTimeout(() => target.scrollIntoView(), 0);
+  }
 </script>
 </body>
 </html>
